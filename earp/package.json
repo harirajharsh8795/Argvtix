@@ -1,0 +1,10 @@
+{
+  "name": "proofline-platform",
+  "version": "1.2.0",
+  "description": "Proofline Enterprise AI Reliability Platform",
+  "private": true,
+  "scripts": {
+    "dev": "python run.py",
+    "start": "python run.py"
+  }
+}

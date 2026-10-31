@@ -1,0 +1,27 @@
+# Proofline Robots Directive
+# https://proofline.ai/robots.txt
+
+User-agent: *
+Allow: /
+Allow: /contact
+Allow: /privacy-policy
+Allow: /terms
+Allow: /favicon.svg
+Allow: /favicon-32x32.png
+Allow: /apple-touch-icon.png
+Allow: /og-preview.png
+
+# Disallow private application console routes & endpoints
+Disallow: /thank-you
+Disallow: /overview
+Disallow: /traces
+Disallow: /guard
+Disallow: /evals
+Disallow: /watchdog
+Disallow: /security
+Disallow: /benchmark
+Disallow: /console
+Disallow: /api/
+Disallow: /ws/
+
+Sitemap: https://proofline.ai/sitemap.xml

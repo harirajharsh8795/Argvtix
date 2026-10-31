@@ -1,0 +1,61 @@
+{
+  "audit_id": "AUD-DEMO-1793152669",
+  "timestamp": "2026-10-28T01:57:49.809216+00:00",
+  "customer_query": "order 1042 ka refund de do, item kharab tha aur kaam nahi kar raha",
+  "interceptions": [
+    {
+      "attempt": "Over-limit \u20b915,000",
+      "decision": "block",
+      "rule": "cap_refund_at_payment"
+    },
+    {
+      "attempt": "IDOR Customer Mismatch",
+      "decision": "block",
+      "rule": "verify_customer_ownership"
+    }
+  ],
+  "verifications": [
+    {
+      "claim": "Aapka order ord_1042 refund kar diya gaya hai \u20b92500 amount ke saath.",
+      "verdict": "VERIFIED",
+      "violations": 0
+    },
+    {
+      "claim": "Maine aapka replacement item dispatch kar diya hai tracking id TRACK_999 ke saath.",
+      "verdict": "FALSE_SUCCESS",
+      "violations": 1,
+      "failure_code": "CLM-01"
+    }
+  ],
+  "watchdog_anomalies": [
+    {
+      "rule_name": "duplicate_refund",
+      "severity": "high",
+      "description": "Order ord_1042 has 2 separate refunds totaling \u20b95,000.00",
+      "entity_type": "order",
+      "entity_id": "ord_1042",
+      "trace_id": null,
+      "details": {
+        "refund_count": 2,
+        "total_refunded": 5000.0,
+        "refund_ids": [
+          "ref_1001",
+          "ref_1002_DUPLICATE"
+        ]
+      }
+    },
+    {
+      "rule_name": "refund_exceeds_payment",
+      "severity": "critical",
+      "description": "Order ord_1042 refunded amount \u20b95,000.00 exceeds total paid \u20b92,500.00 by \u20b92,500.00",
+      "entity_type": "order",
+      "entity_id": "ord_1042",
+      "trace_id": null,
+      "details": {
+        "total_paid": 2500.0,
+        "total_refunded": 5000.0,
+        "excess_amount": 2500.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+# ShopOps AI Agent — 6 Core Workflows Definition
+version: "1.0"
+workflows:
+  - id: "wf_refund"
+    name: "Customer Refund Processing"
+    type: "refund"
+    description: "Issue a monetary refund to customer account after validating return/cancellation policy"
+    risk_level: "high"
+    requires_approval_above: 10000.0
+    allowed_tools:
+      - "get_order"
+      - "get_payment"
+      - "verify_eligibility"
+      - "issue_refund"
+    guard_rules:
+      - "verify_customer_ownership"
+      - "check_prior_refunds"
+      - "cap_refund_at_payment_amount"
+      - "require_human_approval_over_threshold"
+
+  - id: "wf_cancel_order"
+    name: "Order Cancellation"
+    type: "cancel_order"
+    description: "Cancel an active customer order before fulfillment/dispatch"
+    risk_level: "medium"
+    requires_approval_above: 25000.0
+    allowed_tools:
+      - "get_order"
+      - "check_fulfillment_status"
+      - "cancel_order"
+      - "restock_inventory"
+    guard_rules:
+      - "verify_customer_ownership"
+      - "disallow_shipped_order_cancellation"
+
+  - id: "wf_close_ticket"
+    name: "Support Ticket Resolution"
+    type: "close_ticket"
+    description: "Mark support ticket as resolved after addressing customer query"
+    risk_level: "low"
+    requires_approval_above: null
+    allowed_tools:
+      - "get_ticket"
+      - "add_ticket_note"
+      - "resolve_ticket"
+    guard_rules:
+      - "check_unresolved_complaints"
+
+  - id: "wf_update_inventory"
+    name: "Inventory Adjustment"
+    type: "update_inventory"
+    description: "Adjust product stock levels after return, damaged goods, or audit"
+    risk_level: "medium"
+    requires_approval_above: null
+    allowed_tools:
+      - "get_product"
+      - "log_inventory_adjustment"
+      - "update_stock"
+    guard_rules:
+      - "prevent_negative_inventory"
+      - "cap_single_adjustment_delta"
+
+  - id: "wf_change_subscription"
+    name: "Subscription Plan Change"
+    type: "change_subscription"
+    description: "Upgrade, downgrade, or pause recurring customer subscription"
+    risk_level: "medium"
+    requires_approval_above: 5000.0
+    allowed_tools:
+      - "get_subscription"
+      - "calculate_proration"
+      - "update_subscription"
+    guard_rules:
+      - "verify_billing_standing"
+
+  - id: "wf_balance_query"
+    name: "Customer Balance / Statement Inquiry"
+    type: "balance_query"
+    description: "Read-only query for customer wallet balance, credit points, or recent statements"
+    risk_level: "low"
+    requires_approval_above: null
+    allowed_tools:
+      - "get_customer_balance"
+      - "list_transactions"
+    guard_rules:
+      - "mask_pii_in_response"

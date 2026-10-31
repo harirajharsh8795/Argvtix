@@ -1,0 +1,29 @@
+{
+  "watchdog_scan": {
+    "avg_latency_ms": 48.7,
+    "min_latency_ms": 41.14,
+    "max_latency_ms": 57.48,
+    "queries_executed": 6,
+    "findings_detected": 7
+  },
+  "trace_stats": {
+    "avg_latency_ms": 3.66,
+    "queries_executed": 1
+  },
+  "trace_filter_list": {
+    "avg_latency_ms": 7.58,
+    "queries_executed": 2,
+    "result_count": 50,
+    "total_matches": 142
+  },
+  "guard_evaluate": {
+    "avg_latency_ms": 4.96,
+    "queries_executed": 3,
+    "decision": "allow"
+  },
+  "watchdog_findings_filter": {
+    "avg_latency_ms": 5.21,
+    "queries_executed": 2,
+    "result_count": 38
+  }
+}

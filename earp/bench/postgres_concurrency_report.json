@@ -1,0 +1,126 @@
+{
+  "timestamp": "2026-10-31T11:03:17Z",
+  "execution_mode": "Local SQLite Simulation",
+  "live_infrastructure_status": "BLOCKED (Host lacks Docker/PostgreSQL server)",
+  "database_backend": "SQLite WAL",
+  "concurrency_tiers_tested": [
+    2,
+    10,
+    25,
+    50
+  ],
+  "tiers": [
+    {
+      "concurrency": 2,
+      "idempotency_key": "idem-tier-2-4c2d8f24",
+      "total_requests": 2,
+      "successful_responses": 2,
+      "committed_rows_in_db": 1,
+      "total_refunded_amount_db": 1250.0,
+      "expected_refund_amount": 1250.0,
+      "distinct_refund_ids_returned": [
+        "1c0c54f6-2a9a-4483-adf5-ce3931bcf5e6"
+      ],
+      "latencies_ms": {
+        "min": 65.34,
+        "avg": 65.58,
+        "max": 65.81
+      },
+      "invariants": {
+        "exactly_one_committed_row": true,
+        "financial_integrity_preserved": true,
+        "consistent_refund_identity": true,
+        "zero_client_unhandled_errors": true
+      },
+      "verdict": "PASS"
+    },
+    {
+      "concurrency": 10,
+      "idempotency_key": "idem-tier-10-08849fe1",
+      "total_requests": 10,
+      "successful_responses": 10,
+      "committed_rows_in_db": 1,
+      "total_refunded_amount_db": 1250.0,
+      "expected_refund_amount": 1250.0,
+      "distinct_refund_ids_returned": [
+        "12580c91-1290-42f3-9343-d44d8b4dd722"
+      ],
+      "latencies_ms": {
+        "min": 22.93,
+        "avg": 43.26,
+        "max": 52.92
+      },
+      "invariants": {
+        "exactly_one_committed_row": true,
+        "financial_integrity_preserved": true,
+        "consistent_refund_identity": true,
+        "zero_client_unhandled_errors": true
+      },
+      "verdict": "PASS"
+    },
+    {
+      "concurrency": 25,
+      "idempotency_key": "idem-tier-25-18acc8b0",
+      "total_requests": 25,
+      "successful_responses": 25,
+      "committed_rows_in_db": 1,
+      "total_refunded_amount_db": 1250.0,
+      "expected_refund_amount": 1250.0,
+      "distinct_refund_ids_returned": [
+        "476dc0e6-f42e-4e60-a0b5-ef0a6bc12181"
+      ],
+      "latencies_ms": {
+        "min": 9.03,
+        "avg": 39.0,
+        "max": 82.78
+      },
+      "invariants": {
+        "exactly_one_committed_row": true,
+        "financial_integrity_preserved": true,
+        "consistent_refund_identity": true,
+        "zero_client_unhandled_errors": true
+      },
+      "verdict": "PASS"
+    },
+    {
+      "concurrency": 50,
+      "idempotency_key": "idem-tier-50-5a271f95",
+      "total_requests": 50,
+      "successful_responses": 50,
+      "committed_rows_in_db": 1,
+      "total_refunded_amount_db": 1250.0,
+      "expected_refund_amount": 1250.0,
+      "distinct_refund_ids_returned": [
+        "88762dc4-b7d6-45ad-9cb3-69c1cab2d72d"
+      ],
+      "latencies_ms": {
+        "min": 3.06,
+        "avg": 45.28,
+        "max": 132.78
+      },
+      "invariants": {
+        "exactly_one_committed_row": true,
+        "financial_integrity_preserved": true,
+        "consistent_refund_identity": true,
+        "zero_client_unhandled_errors": true
+      },
+      "verdict": "PASS"
+    }
+  ],
+  "restart_resilience": {
+    "test": "restart_resilience",
+    "idempotency_key": "idem-restart-d6bc43cf",
+    "pre_restart_refund_id": "cfedff4e-7904-455f-ab38-68a0f542ae59",
+    "post_restart_refund_id": "cfedff4e-7904-455f-ab38-68a0f542ae59",
+    "identical_identity_preserved": true,
+    "committed_rows_in_db": 1,
+    "verdict": "PASS"
+  },
+  "overall_idempotency_verdict": "PASS",
+  "release_gate_assessment": {
+    "local_algorithm_correctness": "PASS",
+    "database_level_unique_constraint": "PASS",
+    "multi_worker_contention_handling": "PASS",
+    "live_multi_replica_postgres_server": "BLOCKED (Requires live PostgreSQL host)"
+  }
+}

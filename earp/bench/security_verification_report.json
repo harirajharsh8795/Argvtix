@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-10-31T11:24:03Z",
+  "environment": "Windows 11 AMD64 (Local Staging Environment)",
+  "security_gates": {
+    "turnstile_fail_closed": "PASS",
+    "turnstile_live_credentials": "BLOCKED (Awaiting production Cloudflare secret)",
+    "jwt_authentication_hardening": "PASS",
+    "tenant_isolation_idor": "PASS",
+    "human_in_the_loop_thresholds": "PASS",
+    "pii_dlp_masking": "PASS"
+  },
+  "tests": {
+    "turnstile": {
+      "test": "turnstile_security",
+      "fail_closed_when_token_missing": true,
+      "invalid_token_rejected": true,
+      "bot_honeypot_trapped": true,
+      "live_secret_configured": false,
+      "status": "PASS (Fail-Closed Verified; Live Key Pending)"
+    },
+    "jwt": {
+      "test": "jwt_authentication",
+      "valid_token_verification": true,
+      "tampered_token_rejection": true,
+      "production_auth_enforcement": true,
+      "status": "PASS"
+    },
+    "idor": {
+      "test": "tenant_isolation_idor",
+      "target_order_customer": "cust_owner_8e6b6d7f",
+      "requesting_context_customer": "cust_attacker_8e6b6d7f",
+      "decision": "block",
+      "reason": "ACT-03: Customer ID mismatch: customer cust_attacker_8e6b6d7f does not own order ord_tenant_8e6b6d7f.",
+      "idor_prevented": true,
+      "status": "PASS"
+    },
+    "human_approval": {
+      "test": "human_approval_thresholds",
+      "low_value_amount": 1500.0,
+      "low_value_decision": "allow",
+      "high_value_amount": 15000.0,
+      "high_value_decision": "ask_human",
+      "requires_human_approval": true,
+      "status": "PASS"
+    },
+    "pii_dlp": {
+      "test": "pii_dlp_masking",
+      "aadhaar_scrubbed": true,
+      "pan_scrubbed": true,
+      "card_scrubbed": true,
+      "types_detected": [
+        "aadhaar",
+        "credit_card",
+        "email",
+        "pan"
+      ],
+      "status": "PASS"
+    }
+  },
+  "overall_security_verdict": "PASS (Security Hardened; Live Turnstile Pending Secret)"
+}

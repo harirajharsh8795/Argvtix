@@ -1,0 +1,49 @@
+# ==============================================================================
+# Proofline Action Guard Policy Specification
+# Controls execution boundary for autonomous AI agent tool calls
+# ==============================================================================
+
+version: "1.0"
+project_id: "default"
+
+tools:
+  get_order:
+    risk: "read"
+    description: "Fetch order details by order ID"
+    requires:
+      - "order_belongs_to_customer"
+    limits:
+      max_calls_per_turn: 5
+
+  issue_refund:
+    risk: "irreversible_write"
+    description: "Execute customer monetary refund"
+    requires:
+      - "order_belongs_to_customer"
+      - "eligibility_checked"
+      - "not_already_refunded"
+    limits:
+      max_amount: 10000.0  # ₹10,000 threshold
+    approval:
+      required_if: "amount > 5000.0"
+      reviewer_role: "OPERATOR"
+
+  cancel_order:
+    risk: "reversible_write"
+    description: "Cancel order before fulfillment"
+    requires:
+      - "order_belongs_to_customer"
+      - "order_status_pending"
+    approval:
+      required_if: "order_status != 'pending'"
+
+  close_ticket:
+    risk: "reversible_write"
+    description: "Mark support ticket resolved"
+    requires:
+      - "customer_confirmed_resolved"
+
+defaults:
+  on_unknown_tool: "BLOCK"
+  on_missing_precondition: "BLOCK"
+  max_steps_per_ticket: 8

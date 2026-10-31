@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
+  <!-- Background Container: Deep Zinc -->
+  <rect width="32" height="32" rx="6" fill="#0c0e14"/>
+  <rect x="0.5" y="0.5" width="31" height="31" rx="5.5" stroke="#212635"/>
+  
+  <!-- Proofline Dual Invariant Bracket: Geometric & Engineering Grade -->
+  <!-- Left Boundary Wall -->
+  <path d="M7 8H12V10H9V22H12V24H7V8Z" fill="#3b82f6"/>
+  
+  <!-- Right Verification Line & Point -->
+  <path d="M25 8H20V10H23V22H20V24H25V8Z" fill="#3b82f6"/>
+  
+  <!-- Central State Invariant Pulse -->
+  <path d="M12 16H14L15.5 12.5L18 19.5L19.5 16H21" stroke="#10b981" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

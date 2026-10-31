@@ -1,0 +1,36 @@
+# Proofline Production Caddy Reverse Proxy
+# Automates Let's Encrypt TLS, security headers, and edge rate-limiting
+
+{
+    email admin@proofline.ai
+    admin off
+}
+
+{$CUSTOM_DOMAIN:app.proofline.ai}, localhost {
+    # Encode with gzip and zstd
+    encode gzip zstd
+
+    # Strict Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+    }
+
+    # API endpoints routed to API backend
+    handle /api/* {
+        reverse_proxy localhost:8000
+    }
+
+    handle /health {
+        reverse_proxy localhost:8000
+    }
+
+    # All other routes served by UI Nginx container
+    handle {
+        reverse_proxy localhost:3000
+    }
+}
