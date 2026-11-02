@@ -1,6 +1,7 @@
 """
 Test Suite for Week 4: Trace Store, Golden Dataset, and Replay Engine.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -51,7 +52,9 @@ def db():
     o = Order(id="1", customer_id="1", status="delivered", total_amount=1200.0)
     session.add(o)
 
-    pay = Payment(id="1", order_id="1", customer_id="1", amount=1200.0, method="upi", status="succeeded")
+    pay = Payment(
+        id="1", order_id="1", customer_id="1", amount=1200.0, method="upi", status="succeeded"
+    )
     session.add(pay)
     session.commit()
 
@@ -62,6 +65,7 @@ def db():
 # ---------------------------------------------------------------------------
 # Trace Store Unit Tests
 # ---------------------------------------------------------------------------
+
 
 class TestTraceStore:
     def test_save_and_get_trace(self, db):
@@ -170,6 +174,7 @@ class TestTraceStore:
 # Golden Cases Dataset Tests
 # ---------------------------------------------------------------------------
 
+
 class TestGoldenCases:
     def test_load_all_golden_cases(self):
         cases = load_golden_cases()
@@ -195,12 +200,15 @@ class TestGoldenCases:
         cases = load_golden_cases()
         valid_decisions = {"allow", "block", "ask_human"}
         for c in cases:
-            assert c.expected_guard_decision.lower() in valid_decisions, f"Invalid decision in {c.id}"
+            assert c.expected_guard_decision.lower() in valid_decisions, (
+                f"Invalid decision in {c.id}"
+            )
 
 
 # ---------------------------------------------------------------------------
 # Replay Engine Tests
 # ---------------------------------------------------------------------------
+
 
 class TestReplayEngine:
     def test_replay_trace(self, db):

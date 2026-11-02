@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
+
 import requests
 
 logger = logging.getLogger("argvtix_sdk")
@@ -11,6 +12,7 @@ logger = logging.getLogger("argvtix_sdk")
 
 class ArgvtixClientError(Exception):
     """Base exception for Argvtix API errors."""
+
     pass
 
 
@@ -20,7 +22,7 @@ class ArgvtixClient:
     def __init__(
         self,
         api_url: str = "http://localhost:8000",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         project_id: str = "default",
         timeout: float = 10.0,
     ):
@@ -67,8 +69,8 @@ class ArgvtixClient:
         self,
         tool_name: str,
         parameters: dict[str, Any],
-        order_id: Optional[str] = None,
-        amount: Optional[float] = None,
+        order_id: str | None = None,
+        amount: float | None = None,
         agent_id: str = "sdk-agent",
     ) -> dict[str, Any]:
         """Evaluates pre-action safety guard policies without tool execution."""
@@ -96,8 +98,8 @@ class ArgvtixClient:
         self,
         tool_name: str,
         parameters: dict[str, Any],
-        order_id: Optional[str] = None,
-        amount: Optional[float] = None,
+        order_id: str | None = None,
+        amount: float | None = None,
         agent_id: str = "sdk-agent",
     ) -> dict[str, Any]:
         """Calls Tool Gateway MCP proxy for zero-bypass policy evaluation and execution."""

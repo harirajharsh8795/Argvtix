@@ -6,58 +6,67 @@ permitted against targets defined in a valid, cryptographically signed scope.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from enum import Enum
 import hashlib
 import hmac
 import json
+from datetime import UTC, datetime
+from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
-from pydantic import BaseModel, Field, field_validator
+
 import yaml
+from pydantic import BaseModel, Field, field_validator
 
 
 class TargetTier(str, Enum):
     """Target environment risk tier."""
-    T0_INTERNAL_SANDBOX = "T0_INTERNAL_SANDBOX"      # Localhost, test containers
-    T1_CLIENT_STAGING = "T1_CLIENT_STAGING"          # Client test/staging environment
-    T2_CLIENT_PRODUCTION = "T2_CLIENT_PRODUCTION"    # Client production with written consent
-    T3_AUTHORIZED_API = "T3_AUTHORIZED_API"          # Third-party API with signed authorization
+
+    T0_INTERNAL_SANDBOX = "T0_INTERNAL_SANDBOX"  # Localhost, test containers
+    T1_CLIENT_STAGING = "T1_CLIENT_STAGING"  # Client test/staging environment
+    T2_CLIENT_PRODUCTION = "T2_CLIENT_PRODUCTION"  # Client production with written consent
+    T3_AUTHORIZED_API = "T3_AUTHORIZED_API"  # Third-party API with signed authorization
 
 
 class ScoutPermissionError(Exception):
     """Base error for all Scout permission and scope violations."""
+
     pass
 
 
 class ScopeExpiredError(ScoutPermissionError):
     """Scope validity time window is in the past or future."""
+
     pass
 
 
 class TargetHostNotAllowedError(ScoutPermissionError):
     """Target host is not included in the allowed_hosts or egress_allowlist."""
+
     pass
 
 
 class TargetPathNotAllowedError(ScoutPermissionError):
     """Target path is not allowed in scope."""
+
     pass
 
 
 class MissingAuthorizationError(ScoutPermissionError):
     """Missing required signoff or authorization ID for non-sandbox targets."""
+
     pass
 
 
 class InvalidSignatureError(ScoutPermissionError):
     """Scope cryptographic signature failed verification."""
+
     pass
 
 
 class ScopeConfig(BaseModel):
     """Cryptographically verifiable scope definition for an audit run."""
+
     scope_id: str = Field(description="Unique scope identifier")
     project_id: str = Field(default="default", description="Associated Argvtix project ID")
     target_name: str = Field(description="Human-readable name of target agent/chatbot")
@@ -65,32 +74,31 @@ class ScopeConfig(BaseModel):
     target_tier: TargetTier = Field(default=TargetTier.T0_INTERNAL_SANDBOX)
     written_authorization_id: str = Field(
         default="",
-        description="Formal contract or legal authorization reference (e.g. AUTH-2026-CLIENT-09)"
+        description="Formal contract or legal authorization reference (e.g. AUTH-2026-CLIENT-09)",
     )
     signoff_contact_email: str = Field(
-        default="",
-        description="Authorized representative contact email (e.g. ciso@client.com)"
+        default="", description="Authorized representative contact email (e.g. ciso@client.com)"
     )
     valid_from: datetime = Field(description="Audit window start UTC")
     valid_until: datetime = Field(description="Audit window end UTC")
     allowed_hosts: list[str] = Field(
-        default_factory=list,
-        description="List of hostnames or IPs Scout is allowed to connect to"
+        default_factory=list, description="List of hostnames or IPs Scout is allowed to connect to"
     )
     allowed_paths: list[str] = Field(
         default_factory=lambda: ["/"],
-        description="List of URL path prefixes Scout is permitted to probe"
+        description="List of URL path prefixes Scout is permitted to probe",
     )
-    max_rpm: int = Field(default=12, ge=1, le=120, description="Max requests per minute (default 12 = 1 per 5s)")
+    max_rpm: int = Field(
+        default=12, ge=1, le=120, description="Max requests per minute (default 12 = 1 per 5s)"
+    )
     max_turns_per_conversation: int = Field(default=8, ge=1, le=20)
     max_conversations: int = Field(default=150, ge=1, le=500)
     egress_allowlist: list[str] = Field(
         default_factory=list,
-        description="Firewall egress allowlist for container network isolation"
+        description="Firewall egress allowlist for container network isolation",
     )
-    signature: Optional[str] = Field(
-        default=None,
-        description="HMAC-SHA256 signature over canonical scope fields"
+    signature: str | None = Field(
+        default=None, description="HMAC-SHA256 signature over canonical scope fields"
     )
 
     @field_validator("allowed_hosts", mode="before")
@@ -131,14 +139,26 @@ def compute_scope_signature(scope: ScopeConfig | dict[str, Any], secret_key: str
         canonical = {
             k: scope.get(k)
             for k in [
-                "scope_id", "project_id", "target_name", "target_url",
-                "target_tier", "written_authorization_id", "signoff_contact_email",
-                "valid_from", "valid_until", "allowed_hosts", "allowed_paths",
-                "max_rpm", "max_turns_per_conversation", "max_conversations"
+                "scope_id",
+                "project_id",
+                "target_name",
+                "target_url",
+                "target_tier",
+                "written_authorization_id",
+                "signoff_contact_email",
+                "valid_from",
+                "valid_until",
+                "allowed_hosts",
+                "allowed_paths",
+                "max_rpm",
+                "max_turns_per_conversation",
+                "max_conversations",
             ]
         }
     payload_str = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
-    return hmac.new(secret_key.encode("utf-8"), payload_str.encode("utf-8"), hashlib.sha256).hexdigest()
+    return hmac.new(
+        secret_key.encode("utf-8"), payload_str.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
 
 
 def verify_scope_signature(scope: ScopeConfig, secret_key: str) -> bool:
@@ -151,7 +171,7 @@ def verify_scope_signature(scope: ScopeConfig, secret_key: str) -> bool:
 
 def load_scope_from_yaml(
     source: str | Path | dict[str, Any],
-    secret_key: Optional[str] = None,
+    secret_key: str | None = None,
     enforce_signature: bool = False,
 ) -> ScopeConfig:
     """Loads and validates a scope from YAML string, filepath, or dictionary."""
@@ -174,9 +194,13 @@ def load_scope_from_yaml(
 
     if enforce_signature:
         if not secret_key:
-            raise ScoutPermissionError("Secret key required to enforce scope signature verification.")
+            raise ScoutPermissionError(
+                "Secret key required to enforce scope signature verification."
+            )
         if not verify_scope_signature(scope, secret_key):
-            raise InvalidSignatureError("Scope signature verification failed: scope may have been tampered with.")
+            raise InvalidSignatureError(
+                "Scope signature verification failed: scope may have been tampered with."
+            )
 
     return scope
 
@@ -184,7 +208,7 @@ def load_scope_from_yaml(
 def validate_scope_allows_request(
     scope: ScopeConfig,
     target_url: str,
-    current_time: Optional[datetime] = None,
+    current_time: datetime | None = None,
 ) -> None:
     """Ensures target_url is strictly authorized under the scope.
 
@@ -194,12 +218,12 @@ def validate_scope_allows_request(
         TargetHostNotAllowedError
         TargetPathNotAllowedError
     """
-    now = current_time or datetime.now(timezone.utc)
+    now = current_time or datetime.now(UTC)
     if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+        now = now.replace(tzinfo=UTC)
 
-    vf = scope.valid_from if scope.valid_from.tzinfo else scope.valid_from.replace(tzinfo=timezone.utc)
-    vu = scope.valid_until if scope.valid_until.tzinfo else scope.valid_until.replace(tzinfo=timezone.utc)
+    vf = scope.valid_from if scope.valid_from.tzinfo else scope.valid_from.replace(tzinfo=UTC)
+    vu = scope.valid_until if scope.valid_until.tzinfo else scope.valid_until.replace(tzinfo=UTC)
 
     if now < vf or now > vu:
         raise ScopeExpiredError(

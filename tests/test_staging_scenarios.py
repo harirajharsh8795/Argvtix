@@ -16,42 +16,33 @@ Executes and validates all 10 required real user journeys:
 from __future__ import annotations
 
 import concurrent.futures
-from datetime import UTC, datetime
-from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from argvtix.cache.manager import CacheManager, InMemoryLRUTTLCache, RedisCache
+from argvtix.cache.manager import InMemoryLRUTTLCache, RedisCache
 from argvtix.db.models import (
-    ApprovalQueueRecord,
     Base,
     Customer,
     Order,
-    OrderItem,
     Payment,
-    Product,
     Refund,
-    TraceRecord,
-    TraceStepRecord,
 )
 from argvtix.evals.claims import ClaimVerifier
 from argvtix.evals.claims.schemas import ClaimVerdict
-from argvtix.gateway.app import app
 from argvtix.guard import ActionGuard, ApprovalQueue, ToolGateway
 from argvtix.guard.engine import GuardCheckRequest
 from argvtix.security.auth import Role, create_access_token
 from argvtix.target_app.tools import shop_tools
 from argvtix.trace.recorder import TraceRecorder
-from argvtix.trace.schemas import GuardDecision, Severity, StepType, Trace, TraceStatus
-
+from argvtix.trace.schemas import GuardDecision, Severity, TraceStatus
 
 # ---------------------------------------------------------------------------
 # Test Fixture: Seeded Staging Database
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def staging_db():
@@ -150,6 +141,7 @@ def staging_db():
 # SCENARIO 1: Legitimate Low-Value Refund
 # ---------------------------------------------------------------------------
 
+
 def test_scenario_1_legitimate_low_value_refund(staging_db):
     """
     Scenario 1: Customer requests refund under ₹10,000.
@@ -200,6 +192,7 @@ def test_scenario_1_legitimate_low_value_refund(staging_db):
 # ---------------------------------------------------------------------------
 # SCENARIO 2: Refund Requiring Human Approval
 # ---------------------------------------------------------------------------
+
 
 def test_scenario_2_high_value_refund_approval(staging_db):
     """
@@ -257,6 +250,7 @@ def test_scenario_2_high_value_refund_approval(staging_db):
 # SCENARIO 3: Concurrent Duplicate Refund Requests
 # ---------------------------------------------------------------------------
 
+
 def test_scenario_3_concurrent_duplicate_refunds(tmp_path):
     """
     Scenario 3: Concurrent workers issue identical refund requests.
@@ -271,7 +265,14 @@ def test_scenario_3_concurrent_duplicate_refunds(tmp_path):
 
     with SessionFactory() as init_db:
         cust = Customer(id="c1", name="Concurrent User", email="c@test.com", phone="+919000000000")
-        ord1 = Order(id="o1", customer_id="c1", status="completed", subtotal=5000.0, tax=0.0, total_amount=5000.0)
+        ord1 = Order(
+            id="o1",
+            customer_id="c1",
+            status="completed",
+            subtotal=5000.0,
+            tax=0.0,
+            total_amount=5000.0,
+        )
         pay1 = Payment(id="p1", order_id="o1", customer_id="c1", amount=5000.0, status="succeeded")
         init_db.add_all([cust, ord1, pay1])
         init_db.commit()
@@ -310,6 +311,7 @@ def test_scenario_3_concurrent_duplicate_refunds(tmp_path):
 # SCENARIO 4: Unauthorized Cross-Tenant Access (IDOR)
 # ---------------------------------------------------------------------------
 
+
 def test_scenario_4_unauthorized_idor_request(staging_db):
     """
     Scenario 4: Priya attempts to refund Vikram's order.
@@ -338,6 +340,7 @@ def test_scenario_4_unauthorized_idor_request(staging_db):
 # SCENARIO 5: Agent False-Success Claim Detection
 # ---------------------------------------------------------------------------
 
+
 def test_scenario_5_agent_false_success_claim():
     """
     Scenario 5: Agent falsely claims refund was issued when gateway timed out.
@@ -345,12 +348,14 @@ def test_scenario_5_agent_false_success_claim():
     """
     verifier = ClaimVerifier()
     agent_msg = "Aapka order cancel ho gaya hai aur ₹2,500 ka refund aapke bank account mein bhej diya gaya hai."
-    tool_logs = [{
-        "tool_name": "issue_refund",
-        "tool_args": {"order_id": "ord_101", "amount": 2500.0},
-        "tool_result": {"status": "error", "error": "Bank payment gateway timeout"},
-        "is_success": False,
-    }]
+    tool_logs = [
+        {
+            "tool_name": "issue_refund",
+            "tool_args": {"order_id": "ord_101", "amount": 2500.0},
+            "tool_result": {"status": "error", "error": "Bank payment gateway timeout"},
+            "is_success": False,
+        }
+    ]
 
     report = verifier.verify(agent_response=agent_msg, tool_records=tool_logs)
     assert report.violations_count >= 1
@@ -361,6 +366,7 @@ def test_scenario_5_agent_false_success_claim():
 # ---------------------------------------------------------------------------
 # SCENARIO 6: Trace Explorer Rendering & Spans
 # ---------------------------------------------------------------------------
+
 
 def test_scenario_6_trace_explorer_spans():
     """
@@ -391,6 +397,7 @@ def test_scenario_6_trace_explorer_spans():
 # ---------------------------------------------------------------------------
 # SCENARIO 7: Guardrails & Approvals Refresh & Authorization
 # ---------------------------------------------------------------------------
+
 
 def test_scenario_7_approvals_authorization_and_refresh(staging_db):
     """
@@ -425,6 +432,7 @@ def test_scenario_7_approvals_authorization_and_refresh(staging_db):
 # SCENARIO 8: Database Failure & Safe Recovery
 # ---------------------------------------------------------------------------
 
+
 def test_scenario_8_database_failure_and_safe_recovery(staging_db):
     """
     Scenario 8: Transaction error forces rollback; database resets safely.
@@ -447,6 +455,7 @@ def test_scenario_8_database_failure_and_safe_recovery(staging_db):
 # SCENARIO 9: Redis Failure & Safe Recovery
 # ---------------------------------------------------------------------------
 
+
 def test_scenario_9_redis_failure_and_safe_recovery():
     """
     Scenario 9: Redis disconnects; verifies transparent fallback with zero 500s.
@@ -467,6 +476,7 @@ def test_scenario_9_redis_failure_and_safe_recovery():
 # SCENARIO 10: Application Restart During Controlled Operation
 # ---------------------------------------------------------------------------
 
+
 def test_scenario_10_application_restart_persistence(tmp_path):
     """
     Scenario 10: Simulates application restart while approval is pending.
@@ -480,9 +490,24 @@ def test_scenario_10_application_restart_persistence(tmp_path):
     # 1. Before restart: Enqueue pending item
     approval_id = None
     with SessionClass() as db_pre:
-        cust = Customer(id="c_restart", name="Restart User", email="r@test.com", phone="+919111111111")
-        ord1 = Order(id="o_restart", customer_id="c_restart", status="completed", subtotal=20000.0, tax=0.0, total_amount=20000.0)
-        pay1 = Payment(id="p_restart", order_id="o_restart", customer_id="c_restart", amount=20000.0, status="succeeded")
+        cust = Customer(
+            id="c_restart", name="Restart User", email="r@test.com", phone="+919111111111"
+        )
+        ord1 = Order(
+            id="o_restart",
+            customer_id="c_restart",
+            status="completed",
+            subtotal=20000.0,
+            tax=0.0,
+            total_amount=20000.0,
+        )
+        pay1 = Payment(
+            id="p_restart",
+            order_id="o_restart",
+            customer_id="c_restart",
+            amount=20000.0,
+            status="succeeded",
+        )
         db_pre.add_all([cust, ord1, pay1])
         db_pre.commit()
 

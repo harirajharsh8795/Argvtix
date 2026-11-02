@@ -145,7 +145,9 @@ class ApprovalQueue:
             raise ValueError(f"Approval request {approval_id} not found.")
 
         if record.status != ApprovalStatus.PENDING.value:
-            raise ValueError(f"Approval request {approval_id} already decided (status: {record.status}).")
+            raise ValueError(
+                f"Approval request {approval_id} already decided (status: {record.status})."
+            )
 
         record.status = ApprovalStatus.APPROVED.value
         record.reviewer_id = reviewer_id
@@ -178,7 +180,9 @@ class ApprovalQueue:
             raise ValueError(f"Approval request {approval_id} not found.")
 
         if record.status != ApprovalStatus.PENDING.value:
-            raise ValueError(f"Approval request {approval_id} already decided (status: {record.status}).")
+            raise ValueError(
+                f"Approval request {approval_id} already decided (status: {record.status})."
+            )
 
         record.status = ApprovalStatus.REJECTED.value
         record.reviewer_id = reviewer_id
@@ -203,7 +207,9 @@ class ApprovalQueue:
             raise ValueError(f"Approval request {approval_id} not found.")
 
         if record.status != ApprovalStatus.PENDING.value:
-            raise ValueError(f"Approval request {approval_id} already decided (status: {record.status}).")
+            raise ValueError(
+                f"Approval request {approval_id} already decided (status: {record.status})."
+            )
 
         record.status = ApprovalStatus.EDITED.value
         record.reviewer_id = reviewer_id

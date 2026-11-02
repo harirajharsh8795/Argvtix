@@ -8,10 +8,11 @@ Detects 4 failure modes:
 3. MISSING_INVENTORY_DEDUCTION: Delivered order without inventory adjustment
 4. STATUS_DESYNC: ERP status (e.g. 'shipped') != DB status (e.g. 'cancelled')
 """
+
 from __future__ import annotations
 
-from typing import Sequence
 import uuid
+from collections.abc import Sequence
 
 from sqlalchemy.orm import Session
 
@@ -63,11 +64,15 @@ class ReconciliationEngine:
 
         # Direct contradiction checks
         conflict = False
-        if db_stat == "cancelled" and erp_stat in ("shipped", "delivered", "in_transit"):
-            conflict = True
-        elif db_stat == "delivered" and erp_stat in ("cancelled", "returned", "failed"):
-            conflict = True
-        elif db_stat != erp_stat and db_stat in ("pending", "processing") and erp_stat in ("delivered", "cancelled"):
+        if (
+            db_stat == "cancelled"
+            and erp_stat in ("shipped", "delivered", "in_transit")
+            or db_stat == "delivered"
+            and erp_stat in ("cancelled", "returned", "failed")
+            or db_stat != erp_stat
+            and db_stat in ("pending", "processing")
+            and erp_stat in ("delivered", "cancelled")
+        ):
             conflict = True
 
         if conflict:

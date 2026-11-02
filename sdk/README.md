@@ -15,6 +15,7 @@ pip install argvtix-sdk
 ```python
 from argvtix_sdk import trace
 
+
 @trace(workflow="refund_processing")
 def handle_customer_refund(order_id: str, amount: float):
     # Function execution, inputs, returns, and latency are automatically captured
@@ -33,6 +34,6 @@ gateway = ToolGatewayClient(client=client)
 result = gateway.call_tool(
     tool_name="issue_refund",
     parameters={"order_id": "ORD-101", "amount": 2500.0},
-    agent_id="agent-v1"
+    agent_id="agent-v1",
 )
 ```

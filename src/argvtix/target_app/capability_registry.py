@@ -5,10 +5,11 @@ Maintains metadata, capabilities, context limits, and token pricing for LLM mode
 - Prevents invoking unsupported capabilities (e.g. tool calling on models lacking function support)
 - Provides standard cost calculation per 1M tokens
 """
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from enum import Enum
-from typing import Sequence
 
 from pydantic import BaseModel, Field
 
@@ -23,6 +24,7 @@ class ModelCapability(str, Enum):
 
 class ModelMetadata(BaseModel):
     """Configuration profile and operational boundaries for an LLM model."""
+
     name: str
     provider: str  # "google" | "openai" | "anthropic" | "mock"
     context_window: int = 128000

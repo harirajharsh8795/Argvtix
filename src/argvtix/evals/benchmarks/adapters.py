@@ -11,6 +11,7 @@ Supported providers:
   - LiteLLM (any litellm-compatible model string)
   - MockAdapter (zero-cost deterministic testing)
 """
+
 from __future__ import annotations
 
 import time
@@ -22,9 +23,11 @@ from typing import Any
 # Shared response schema
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ModelResponse:
     """Normalised response from any LLM provider."""
+
     text: str
     model_id: str
     latency_ms: float
@@ -47,6 +50,7 @@ class ModelResponse:
 # Abstract base
 # ---------------------------------------------------------------------------
 
+
 class ModelAdapter(ABC):
     """Common interface every model adapter must implement."""
 
@@ -63,6 +67,7 @@ class ModelAdapter(ABC):
 # ---------------------------------------------------------------------------
 # Mock adapter (always available, no API keys needed)
 # ---------------------------------------------------------------------------
+
 
 class MockAdapter(ModelAdapter):
     """Deterministic mock for unit tests — returns a fixed-format response."""
@@ -93,6 +98,7 @@ class MockAdapter(ModelAdapter):
 # Gemini adapter
 # ---------------------------------------------------------------------------
 
+
 class GeminiAdapter(ModelAdapter):
     """
     Adapter for Google Gemini models via google-generativeai SDK.
@@ -122,6 +128,7 @@ class GeminiAdapter(ModelAdapter):
     def _init_client(self) -> None:
         try:
             import google.generativeai as genai
+
             if self._api_key:
                 genai.configure(api_key=self._api_key)
             self._client = genai.GenerativeModel(
@@ -148,11 +155,21 @@ class GeminiAdapter(ModelAdapter):
             text = response.text or ""
             # Gemini usage metadata
             usage = getattr(response, "usage_metadata", None)
-            prompt_tokens = getattr(usage, "prompt_token_count", len(prompt.split())) if usage else len(prompt.split())
-            completion_tokens = getattr(usage, "candidates_token_count", len(text.split())) if usage else len(text.split())
+            prompt_tokens = (
+                getattr(usage, "prompt_token_count", len(prompt.split()))
+                if usage
+                else len(prompt.split())
+            )
+            completion_tokens = (
+                getattr(usage, "candidates_token_count", len(text.split()))
+                if usage
+                else len(text.split())
+            )
 
-            cost = (prompt_tokens * self._INPUT_COST_PER_TOKEN +
-                    completion_tokens * self._OUTPUT_COST_PER_TOKEN)
+            cost = (
+                prompt_tokens * self._INPUT_COST_PER_TOKEN
+                + completion_tokens * self._OUTPUT_COST_PER_TOKEN
+            )
 
             return ModelResponse(
                 text=text,
@@ -178,12 +195,12 @@ class GeminiAdapter(ModelAdapter):
 
 # Approximate pricing table (USD per token, May 2025)
 _LITELLM_PRICING: dict[str, tuple[float, float]] = {
-    "claude-3-5-sonnet-20241022":  (3.00 / 1_000_000, 15.00 / 1_000_000),
-    "claude-3-opus-20240229":      (15.00 / 1_000_000, 75.00 / 1_000_000),
-    "gpt-4o":                      (5.00 / 1_000_000, 15.00 / 1_000_000),
-    "gpt-4o-mini":                 (0.15 / 1_000_000,  0.60 / 1_000_000),
-    "gpt-4-turbo":                 (10.00 / 1_000_000, 30.00 / 1_000_000),
-    "mistral/mistral-large-latest":(4.00 / 1_000_000, 12.00 / 1_000_000),
+    "claude-3-5-sonnet-20241022": (3.00 / 1_000_000, 15.00 / 1_000_000),
+    "claude-3-opus-20240229": (15.00 / 1_000_000, 75.00 / 1_000_000),
+    "gpt-4o": (5.00 / 1_000_000, 15.00 / 1_000_000),
+    "gpt-4o-mini": (0.15 / 1_000_000, 0.60 / 1_000_000),
+    "gpt-4-turbo": (10.00 / 1_000_000, 30.00 / 1_000_000),
+    "mistral/mistral-large-latest": (4.00 / 1_000_000, 12.00 / 1_000_000),
 }
 
 
@@ -251,7 +268,7 @@ class LiteLLMAdapter(ModelAdapter):
             usage = response.usage
             prompt_tokens = usage.prompt_tokens if usage else len(prompt.split())
             completion_tokens = usage.completion_tokens if usage else len(text.split())
-            cost = (prompt_tokens * self._in_cost + completion_tokens * self._out_cost)
+            cost = prompt_tokens * self._in_cost + completion_tokens * self._out_cost
 
             return ModelResponse(
                 text=text,
@@ -274,6 +291,7 @@ class LiteLLMAdapter(ModelAdapter):
 # ---------------------------------------------------------------------------
 # Named convenience subclasses
 # ---------------------------------------------------------------------------
+
 
 class ClaudeAdapter(LiteLLMAdapter):
     """Claude 3.5 Sonnet via LiteLLM."""

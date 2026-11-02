@@ -12,6 +12,7 @@ categorized into 4 critical reliability pillars:
 from __future__ import annotations
 
 from enum import Enum
+
 from pydantic import BaseModel, Field
 
 
@@ -63,7 +64,9 @@ class BenchmarkCase(BaseModel):
     customer_id: str = Field(..., description="Target customer ID")
     order_id: str | None = Field(default=None)
     amount: float | None = Field(default=None)
-    expected_failure: FailureTaxonomy = Field(..., description="Expected failure mode, or BENIGN_PASS")
+    expected_failure: FailureTaxonomy = Field(
+        ..., description="Expected failure mode, or BENIGN_PASS"
+    )
     expected_category: FailureCategory = Field(..., description="Pillar category")
     expected_guard_decision: str = Field(default="allow")  # allow, block, ask_human
     description: str = Field(default="")

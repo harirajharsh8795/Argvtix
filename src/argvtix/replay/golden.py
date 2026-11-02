@@ -4,6 +4,7 @@ Golden Cases Dataset Loader.
 Loads the ground-truth benchmark suite from config/golden_cases.yaml.
 Provides strongly-typed GoldenCase objects for replay and regression testing.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,7 +27,9 @@ class GoldenCase(BaseModel):
     product_id: str | None = Field(default=None, description="Referenced product ID if applicable")
     amount: float | None = Field(default=None, description="Monetary transaction amount")
     expected_intent: str = Field(..., description="Expected classified intent")
-    expected_guard_decision: str = Field(..., description="Expected decision: allow, block, ask_human")
+    expected_guard_decision: str = Field(
+        ..., description="Expected decision: allow, block, ask_human"
+    )
     expected_tool: str | None = Field(default=None, description="Expected MCP tool to execute")
     description: str = Field(default="", description="Rationale behind this expected outcome")
 

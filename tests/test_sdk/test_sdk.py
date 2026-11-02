@@ -1,8 +1,8 @@
 """Tests for Argvtix SDK (@trace decorator, client, and tool gateway)."""
 
 import asyncio
-import pytest
 
+import pytest
 from argvtix_sdk.client import ArgvtixClient
 from argvtix_sdk.gateway import ToolGatewayClient
 from argvtix_sdk.trace import local_trace_buffer, trace
@@ -87,7 +87,10 @@ class TestToolGatewayClient:
         monkeypatch.setattr(
             client,
             "call_gateway",
-            lambda **kwargs: {"decision": "BLOCK", "reason": "Order already delivered and return window passed"},
+            lambda **kwargs: {
+                "decision": "BLOCK",
+                "reason": "Order already delivered and return window passed",
+            },
         )
 
         gateway = ToolGatewayClient(client=client)

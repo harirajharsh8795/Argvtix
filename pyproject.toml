@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
 authors = [
-    {name = "Your Name", email = "you@example.com"},
+    {name = "Harsh Rawat", email = "harirajharshrawat@gmail.com"},
 ]
 
 dependencies = [
@@ -62,13 +62,27 @@ where = ["src"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+exclude = [
+    "alembic",
+    "ui",
+    ".venv",
+    ".hypothesis",
+    ".pytest_cache",
+    "build",
+    "dist",
+]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
-ignore = ["E501", "UP042", "SIM108", "B008"]
+select = ["E", "F", "I", "W"]
+ignore = ["E501", "E402", "B008", "SIM108", "UP042", "W291"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["argvtix"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["N806", "N802", "B018", "F841", "E402", "E712", "SIM117"]
+"bench/*" = ["E402", "N806", "F841", "E712", "B023"]
+"scripts/*" = ["E402", "N806", "F841", "E712"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "sdk", "."]

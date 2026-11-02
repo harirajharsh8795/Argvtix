@@ -126,7 +126,9 @@ class Payment(Base):
     order_id = Column(String(64), ForeignKey("orders.id"), nullable=False, index=True)
     customer_id = Column(String(64), ForeignKey("customers.id"), nullable=False, index=True)
     amount = Column(Float, nullable=False)
-    status = Column(String(32), default="succeeded", nullable=False, index=True)  # succeeded, failed, refunded
+    status = Column(
+        String(32), default="succeeded", nullable=False, index=True
+    )  # succeeded, failed, refunded
     method = Column(String(32), default="credit_card")  # upi, credit_card, netbanking, cod
     transaction_ref = Column(String(128), unique=True, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
@@ -152,7 +154,9 @@ class Refund(Base):
     customer_id = Column(String(64), ForeignKey("customers.id"), nullable=False, index=True)
     amount = Column(Float, nullable=False)
     reason = Column(String(255), nullable=True)
-    status = Column(String(32), default="completed", nullable=False, index=True)  # pending, completed, rejected
+    status = Column(
+        String(32), default="completed", nullable=False, index=True
+    )  # pending, completed, rejected
     processed_by = Column(String(64), default="system")  # ai_agent, human_agent, system
     idempotency_key = Column(String(128), unique=True, nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
@@ -203,9 +207,7 @@ class SupportTicket(Base):
     customer = relationship("Customer", back_populates="tickets")
     order = relationship("Order", back_populates="tickets")
 
-    __table_args__ = (
-        Index("ix_support_tickets_status_priority", "status", "priority"),
-    )
+    __table_args__ = (Index("ix_support_tickets_status_priority", "status", "priority"),)
 
 
 class LedgerEntry(Base):
@@ -222,9 +224,7 @@ class LedgerEntry(Base):
 
     customer = relationship("Customer", back_populates="ledger_entries")
 
-    __table_args__ = (
-        Index("ix_ledger_customer_type", "customer_id", "entry_type"),
-    )
+    __table_args__ = (Index("ix_ledger_customer_type", "customer_id", "entry_type"),)
 
 
 # ============================================================================
@@ -279,9 +279,7 @@ class TraceStepRecord(Base):
 
     trace = relationship("TraceRecord", back_populates="steps")
 
-    __table_args__ = (
-        Index("ix_trace_steps_trace_step_index", "trace_id", "step_index"),
-    )
+    __table_args__ = (Index("ix_trace_steps_trace_step_index", "trace_id", "step_index"),)
 
 
 class WatchdogFindingRecord(Base):
@@ -322,7 +320,9 @@ class ApprovalQueueRecord(Base):
     customer_id = Column(String(64), nullable=True, index=True)
     amount = Column(Float, nullable=True)
     payload_json = Column(Text, nullable=False)
-    status = Column(String(32), default="pending", index=True)  # pending, approved, rejected, edited
+    status = Column(
+        String(32), default="pending", index=True
+    )  # pending, approved, rejected, edited
     guard_reasons = Column(Text, nullable=True)
     risk_level = Column(String(32), default="high")
     reviewer_id = Column(String(64), nullable=True)

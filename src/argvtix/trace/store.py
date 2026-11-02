@@ -4,6 +4,7 @@ Trace Store — Database persistence & retrieval for AI traces.
 Provides high-level functions to save a Pydantic v2 Trace object into the SQL
 database (SQLite / PostgreSQL) and reconstruct it back into a validated Trace object.
 """
+
 from __future__ import annotations
 
 import json
@@ -87,11 +88,7 @@ def get_trace(db: Session, trace_id: str) -> Trace | None:
     Fetch a TraceRecord from database by trace_id and deserialize it
     back into a Pydantic v2 Trace object. Returns None if not found.
     """
-    record = (
-        db.query(TraceRecord)
-        .filter(TraceRecord.id == trace_id)
-        .first()
-    )
+    record = db.query(TraceRecord).filter(TraceRecord.id == trace_id).first()
     if not record:
         return None
 
@@ -147,9 +144,4 @@ def list_trace_records(
     if status_filter:
         query = query.filter(TraceRecord.status == status_filter)
 
-    return (
-        query.order_by(TraceRecord.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    return query.order_by(TraceRecord.created_at.desc()).offset(offset).limit(limit).all()

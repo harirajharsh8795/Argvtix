@@ -6,10 +6,11 @@ Protects automated evaluation judges from adversarial jailbreaks & scoring manip
 - Flags 'judge-injection-suspected' and aborts judge call to prevent metric poisoning
 - Multilingual support (English, Hindi, Hinglish)
 """
+
 from __future__ import annotations
 
 import re
-from typing import Sequence
+from collections.abc import Sequence
 
 
 class JudgeInjectionDefence:
@@ -25,13 +26,11 @@ class JudgeInjectionDefence:
         r"rate\s+this\s+(?:response\s+)?(?:as\s+)?10(?:\.0)?",
         r"system\s*:\s*score\s*=\s*10",
         r"<\/?(?:evaluation|score|verdict|rubric)>",
-
         # Hinglish patterns
         r"purane\s+(?:niyam|instructions)\s+bhool\s+jao",
         r"(?:full|maximum)\s+(?:marks|score)\s+de\s+do",
         r"10\s+(?:out\s+of\s+10|mein\s+se\s+10)\s+do",
         r"rubric\s+ko\s+chhod\s+kar",
-
         # Hindi Devanagari patterns
         r"पुराने\s+(?:निर्देश|नियम)\s+भूल\s+जाओ",
         r"(?:10/10|पूरे)\s+अंक\s+दो",

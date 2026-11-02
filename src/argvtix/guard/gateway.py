@@ -15,8 +15,9 @@ Every tool call passes through this gateway:
 from __future__ import annotations
 
 import inspect
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -70,11 +71,33 @@ class ToolGateway:
 
     def _register_default_tools(self) -> None:
         """Register the standard ShopOps tools."""
-        self.register_tool("get_order", shop_tools.get_order, is_write=False, description="Read order details")
-        self.register_tool("get_customer_balance", shop_tools.get_customer_balance, is_write=False, description="Read customer balance")
-        self.register_tool("check_order_refund_status", shop_tools.check_order_refund_status, is_write=False, description="Read refund status")
-        self.register_tool("issue_refund", shop_tools.issue_refund, is_write=True, description="Write refund record")
-        self.register_tool("cancel_order", shop_tools.cancel_order, is_write=True, description="Write order cancellation")
+        self.register_tool(
+            "get_order", shop_tools.get_order, is_write=False, description="Read order details"
+        )
+        self.register_tool(
+            "get_customer_balance",
+            shop_tools.get_customer_balance,
+            is_write=False,
+            description="Read customer balance",
+        )
+        self.register_tool(
+            "check_order_refund_status",
+            shop_tools.check_order_refund_status,
+            is_write=False,
+            description="Read refund status",
+        )
+        self.register_tool(
+            "issue_refund",
+            shop_tools.issue_refund,
+            is_write=True,
+            description="Write refund record",
+        )
+        self.register_tool(
+            "cancel_order",
+            shop_tools.cancel_order,
+            is_write=True,
+            description="Write order cancellation",
+        )
 
     def register_tool(
         self,
@@ -197,13 +220,17 @@ class ToolGateway:
             return gate_res
 
         # 7. Handle ALLOW: Execute real tool against database
-        tool_res = self._execute_handler(tool_reg.handler, params, db, idempotency_key=idempotency_key)
+        tool_res = self._execute_handler(
+            tool_reg.handler, params, db, idempotency_key=idempotency_key
+        )
         gate_res = GatewayResult(
             tool_name=tool_name,
             decision=GuardDecision.ALLOW,
             success=tool_res.success if hasattr(tool_res, "success") else True,
             status="completed",
-            data=tool_res.data if hasattr(tool_res, "data") else (tool_res if isinstance(tool_res, dict) else {}),
+            data=tool_res.data
+            if hasattr(tool_res, "data")
+            else (tool_res if isinstance(tool_res, dict) else {}),
             error=tool_res.error if hasattr(tool_res, "error") else None,
             idempotency_key=idempotency_key,
         )
@@ -248,7 +275,11 @@ class ToolGateway:
         amount = float(params.get("amount", 0.0))
         reason = str(params.get("reason", "agent_tool_call"))
 
-        workflow_type = "refund" if "refund" in tool_name else ("cancel" if "cancel" in tool_name else "general")
+        workflow_type = (
+            "refund"
+            if "refund" in tool_name
+            else ("cancel" if "cancel" in tool_name else "general")
+        )
 
         return GuardCheckRequest(
             workflow_type=workflow_type,

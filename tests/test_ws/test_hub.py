@@ -2,6 +2,7 @@
 Tests for ARGVTIX Real-Time WebSocket Hub and Router.
 Verifies client lifecycle, typed event broadcast, and FastAPI endpoint integration.
 """
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from argvtix.gateway.app import app
-from argvtix.ws.hub import ConnectionHub, Event, EventType, broadcast, get_hub
+from argvtix.ws.hub import ConnectionHub, Event, EventType
 
 
 class TestEventSerialization:

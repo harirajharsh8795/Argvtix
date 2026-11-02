@@ -14,7 +14,6 @@ import argparse
 import asyncio
 import json
 import statistics
-import sys
 import time
 import uuid
 from typing import Any
@@ -184,7 +183,7 @@ async def run_profile(
     concurrency = config["concurrency"]
     total_requests = config["total_requests"]
 
-    print(f"\n" + "=" * 70)
+    print("\n" + "=" * 70)
     print(f"RUNNING PROFILE: {profile_name.upper()}")
     print(f"Target: {base_url} | Concurrency: {concurrency} | Total Requests: {total_requests}")
     print(f"Scenario: {config['description']}")
@@ -209,6 +208,7 @@ async def run_profile(
     is_asgi = base_url.lower() in ("asgi", "app", "in_process")
     if is_asgi:
         from argvtix.gateway.app import app
+
         transport = httpx.ASGITransport(app=app)
         client = httpx.AsyncClient(transport=transport, base_url="http://testserver", limits=limits)
         target_url = "http://testserver"
@@ -217,6 +217,7 @@ async def run_profile(
         target_url = base_url
 
     async with client:
+
         async def worker():
             while not queue.empty():
                 try:
@@ -281,7 +282,9 @@ async def run_profile(
             "failed": data["failed"],
             "success_rate": round(data["success"] / data["count"] * 100.0, 2),
             "p50_ms": round(ep_lats[int(len(ep_lats) * 0.50)], 2),
-            "p95_ms": round(ep_lats[int(len(ep_lats) * 0.95)], 2) if len(ep_lats) > 1 else round(ep_lats[0], 2),
+            "p95_ms": round(ep_lats[int(len(ep_lats) * 0.95)], 2)
+            if len(ep_lats) > 1
+            else round(ep_lats[0], 2),
             "avg_ms": round(statistics.mean(ep_lats), 2),
         }
 
@@ -306,13 +309,15 @@ async def run_profile(
     }
 
     # Console display
-    print(f"Results Summary:")
+    print("Results Summary:")
     print(f"  Throughput:           {rps:8.2f} req/sec")
     print(f"  Total Duration:       {wall_time:8.2f} seconds")
-    print(f"  Successful (2xx/3xx): {len(successful)} / {len(results)} ({len(successful)/len(results)*100.0:.1f}%)")
+    print(
+        f"  Successful (2xx/3xx): {len(successful)} / {len(results)} ({len(successful) / len(results) * 100.0:.1f}%)"
+    )
     print(f"  Client Errors (4xx):  {len(client_errs)}")
     print(f"  Server Errors (5xx):  {len(server_errs)}")
-    print(f"  Latency Percentiles:")
+    print("  Latency Percentiles:")
     print(f"    p50 (Median):       {p50:8.2f} ms")
     print(f"    p95:                {p95:8.2f} ms")
     print(f"    p99:                {p99:8.2f} ms")
@@ -322,7 +327,9 @@ async def run_profile(
     print(f"{'Endpoint':<28} | {'Reqs':<5} | {'p50 (ms)':<8} | {'p95 (ms)':<8} | {'Success %':<9}")
     print("-" * 70)
     for ep, ep_data in endpoint_summary.items():
-        print(f"{ep:<28} | {ep_data['requests']:<5} | {ep_data['p50_ms']:<8.2f} | {ep_data['p95_ms']:<8.2f} | {ep_data['success_rate']:<9.1f}%")
+        print(
+            f"{ep:<28} | {ep_data['requests']:<5} | {ep_data['p50_ms']:<8.2f} | {ep_data['p95_ms']:<8.2f} | {ep_data['success_rate']:<9.1f}%"
+        )
     print("=" * 70)
 
     return report
@@ -332,6 +339,7 @@ async def fetch_system_metrics(base_url: str) -> dict[str, Any]:
     is_asgi = base_url.lower() in ("asgi", "app", "in_process")
     if is_asgi:
         from argvtix.gateway.app import app
+
         transport = httpx.ASGITransport(app=app)
         client = httpx.AsyncClient(transport=transport, base_url="http://testserver")
     else:
@@ -373,9 +381,7 @@ async def main():
     print(f"Initial Cache Status: {json.dumps(initial_metrics['cache'])}")
 
     profiles_to_run = (
-        ["smoke", "load", "stress", "spike"]
-        if args.profile == "all"
-        else [args.profile]
+        ["smoke", "load", "stress", "spike"] if args.profile == "all" else [args.profile]
     )
 
     all_reports = {}
@@ -404,7 +410,9 @@ async def main():
     with open(staging_report_path, "w", encoding="utf-8") as f:
         json.dump(combined_output, f, indent=2)
 
-    print(f"\nBenchmark suite complete. Full results written to {args.output} and {staging_report_path}")
+    print(
+        f"\nBenchmark suite complete. Full results written to {args.output} and {staging_report_path}"
+    )
 
 
 if __name__ == "__main__":

@@ -24,6 +24,7 @@ generate_response  generate_response("pending approval")
   ▼
  [END]
 """
+
 from __future__ import annotations
 
 import json
@@ -53,6 +54,7 @@ from argvtix.trace.schemas import Trace
 # Agent State (passed between LangGraph nodes)
 # ---------------------------------------------------------------------------
 
+
 class AgentState(TypedDict, total=False):
     # Inputs
     ticket_text: str
@@ -60,7 +62,7 @@ class AgentState(TypedDict, total=False):
     session_id: str
 
     # Extracted by classify_intent
-    intent: str                  # refund | cancel_order | balance_inquiry | inventory_check | unknown
+    intent: str  # refund | cancel_order | balance_inquiry | inventory_check | unknown
     order_id: int | None
     amount: float | None
     confidence: float
@@ -69,7 +71,7 @@ class AgentState(TypedDict, total=False):
     policy_chunks: list[str]
 
     # Set by check_guard
-    guard_decision: str          # ALLOW | BLOCK | ASK_HUMAN
+    guard_decision: str  # ALLOW | BLOCK | ASK_HUMAN
     guard_reason: str
     guard_policy: str | None
 
@@ -80,7 +82,7 @@ class AgentState(TypedDict, total=False):
 
     # Set by generate_response
     final_response: str
-    status: str                  # completed | blocked | pending_approval | error
+    status: str  # completed | blocked | pending_approval | error
 
     # Error handling
     error: str | None
@@ -89,6 +91,7 @@ class AgentState(TypedDict, total=False):
 # ---------------------------------------------------------------------------
 # Node: classify_intent
 # ---------------------------------------------------------------------------
+
 
 def make_classify_node(llm: LLMProtocol, recorder: TraceRecorder):
     def classify_intent(state: AgentState) -> AgentState:
@@ -101,7 +104,7 @@ def make_classify_node(llm: LLMProtocol, recorder: TraceRecorder):
             f"Customer ticket: {ticket}\n\n"
             "Return ONLY a valid JSON object with keys: intent, order_id, amount, confidence.\n"
             "order_id and amount can be null if not mentioned.\n"
-            "Example: {\"intent\": \"refund\", \"order_id\": 42, \"amount\": null, \"confidence\": 0.95}"
+            'Example: {"intent": "refund", "order_id": 42, "amount": null, "confidence": 0.95}'
         )
 
         t0 = time.monotonic()
@@ -136,6 +139,7 @@ def make_classify_node(llm: LLMProtocol, recorder: TraceRecorder):
 # Node: retrieve_policy
 # ---------------------------------------------------------------------------
 
+
 def make_retrieve_node(recorder: TraceRecorder):
     def retrieve_policy_node(state: AgentState) -> AgentState:
         query = f"{state.get('intent', '')} {state.get('ticket_text', '')}"
@@ -159,6 +163,7 @@ def make_retrieve_node(recorder: TraceRecorder):
 # ---------------------------------------------------------------------------
 # Node: check_guard
 # ---------------------------------------------------------------------------
+
 
 def make_guard_node(db: Session, recorder: TraceRecorder):
     guard = ActionGuard()
@@ -184,7 +189,12 @@ def make_guard_node(db: Session, recorder: TraceRecorder):
                 latency_ms=latency,
                 policy_triggered=None,
             )
-            return {**state, "guard_decision": "ALLOW", "guard_reason": "Read-only", "guard_policy": None}
+            return {
+                **state,
+                "guard_decision": "ALLOW",
+                "guard_reason": "Read-only",
+                "guard_policy": None,
+            }
 
         # Build GuardCheckRequest for write operations
         req = GuardCheckRequest(
@@ -229,6 +239,7 @@ def make_guard_node(db: Session, recorder: TraceRecorder):
 # Node: execute_tool
 # ---------------------------------------------------------------------------
 
+
 def make_execute_node(db: Session, recorder: TraceRecorder):
     def execute_tool(state: AgentState) -> AgentState:
         intent = state.get("intent")
@@ -245,7 +256,9 @@ def make_execute_node(db: Session, recorder: TraceRecorder):
         if intent == "refund" and order_id:
             tool_name = "issue_refund"
             tool_inputs = {"customer_id": customer_id, "order_id": order_id, "amount": amount or 0}
-            result = issue_refund(db, customer_id=customer_id, order_id=order_id, amount=amount or 0)
+            result = issue_refund(
+                db, customer_id=customer_id, order_id=order_id, amount=amount or 0
+            )
 
         elif intent == "cancel_order" and order_id:
             tool_name = "cancel_order"
@@ -295,6 +308,7 @@ def make_execute_node(db: Session, recorder: TraceRecorder):
 # ---------------------------------------------------------------------------
 # Node: generate_response
 # ---------------------------------------------------------------------------
+
 
 def make_response_node(llm: LLMProtocol, recorder: TraceRecorder):
     def generate_response(state: AgentState) -> AgentState:
@@ -357,6 +371,7 @@ def make_response_node(llm: LLMProtocol, recorder: TraceRecorder):
 # Router — decides which edge to take after check_guard
 # ---------------------------------------------------------------------------
 
+
 def route_after_guard(state: AgentState) -> str:
     decision = str(state.get("guard_decision", "allow")).lower()
     if decision in ("allow", "guarddecision.allow"):
@@ -368,6 +383,7 @@ def route_after_guard(state: AgentState) -> str:
 # ---------------------------------------------------------------------------
 # ShopOpsAgent — assembles and runs the LangGraph
 # ---------------------------------------------------------------------------
+
 
 class ShopOpsAgent:
     """
@@ -440,7 +456,11 @@ class ShopOpsAgent:
                 error_type=type(exc).__name__,
                 message=str(exc),
             )
-            final_state = {**initial_state, "final_response": "Kuch technical issue aayi. Please thodi der baad try karein.", "status": "failed"}
+            final_state = {
+                **initial_state,
+                "final_response": "Kuch technical issue aayi. Please thodi der baad try karein.",
+                "status": "failed",
+            }
             status = "failed"
 
         # Step 2: Outbound DLP filter (checks for leaked system prompt, stack traces, unmasked PII)
@@ -448,7 +468,11 @@ class ShopOpsAgent:
         safe_response = self._dlp.sanitize(raw_response)
 
         # Map to valid TraceStatus values
-        trace_status = "blocked" if status == "blocked" else ("failed" if status in ("error", "failed") else "completed")
+        trace_status = (
+            "blocked"
+            if status == "blocked"
+            else ("failed" if status in ("error", "failed") else "completed")
+        )
         trace = recorder.build_trace(status=trace_status)
 
         return AgentRunResult(
@@ -489,6 +513,7 @@ def _build_graph(
 # ---------------------------------------------------------------------------
 # Result container
 # ---------------------------------------------------------------------------
+
 
 class AgentRunResult:
     """Returned by ShopOpsAgent.run()."""

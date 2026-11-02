@@ -60,7 +60,9 @@ class RefundExceedsPaymentRule(BaseWatchdogRule):
                 refund_subq.c.total_refunded,
             )
             .outerjoin(paid_subq, refund_subq.c.order_id == paid_subq.c.order_id)
-            .filter(refund_subq.c.total_refunded > func.coalesce(paid_subq.c.total_paid, 0.0) + 0.05)
+            .filter(
+                refund_subq.c.total_refunded > func.coalesce(paid_subq.c.total_paid, 0.0) + 0.05
+            )
             .all()
         )
 

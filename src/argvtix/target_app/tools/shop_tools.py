@@ -3,12 +3,12 @@ MCP (Model Context Protocol) style tools that the ShopOps AI agent can call.
 Each tool performs a real database operation and returns structured results.
 The agent calls these tools AFTER the Guard has approved the action.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from argvtix.db.models import Customer, Order, Payment, Product, Refund
@@ -17,6 +17,7 @@ from argvtix.db.models import Customer, Order, Payment, Product, Refund
 @dataclass
 class ToolResult:
     """Standardised result every tool returns."""
+
     success: bool
     data: dict
     error: str | None = None
@@ -25,6 +26,7 @@ class ToolResult:
 # ---------------------------------------------------------------------------
 # READ TOOLS
 # ---------------------------------------------------------------------------
+
 
 def get_order(db: Session, order_id: str | int) -> ToolResult:
     """
@@ -53,8 +55,7 @@ def get_order(db: Session, order_id: str | int) -> ToolResult:
                 "status": payment.status if payment else None,
             },
             "refunds": [
-                {"id": r.id, "amount": float(r.amount), "reason": r.reason}
-                for r in refunds
+                {"id": r.id, "amount": float(r.amount), "reason": r.reason} for r in refunds
             ],
         },
     )
@@ -72,9 +73,7 @@ def get_customer_balance(db: Session, customer_id: str | int) -> ToolResult:
 
     # Pending refunds = in-flight store credit
     pending_refunds = (
-        db.query(Refund)
-        .filter(Refund.customer_id == cid, Refund.status == "pending")
-        .all()
+        db.query(Refund).filter(Refund.customer_id == cid, Refund.status == "pending").all()
     )
     pending_amount = sum(float(r.amount) for r in pending_refunds)
 
@@ -101,8 +100,7 @@ def check_order_refund_status(db: Session, order_id: str | int) -> ToolResult:
         data={
             "has_refund": True,
             "refunds": [
-                {"id": r.id, "amount": float(r.amount), "status": r.status}
-                for r in refunds
+                {"id": r.id, "amount": float(r.amount), "status": r.status} for r in refunds
             ],
         },
     )
@@ -111,6 +109,7 @@ def check_order_refund_status(db: Session, order_id: str | int) -> ToolResult:
 # ---------------------------------------------------------------------------
 # WRITE TOOLS
 # ---------------------------------------------------------------------------
+
 
 def issue_refund(
     db: Session,
@@ -130,9 +129,7 @@ def issue_refund(
     # 1. Check for prior refund with matching idempotency key (cross-replica protection)
     if idempotency_key:
         prior_by_key = (
-            db.query(Refund)
-            .filter(Refund.idempotency_key == str(idempotency_key))
-            .first()
+            db.query(Refund).filter(Refund.idempotency_key == str(idempotency_key)).first()
         )
         if prior_by_key:
             return ToolResult(
@@ -209,9 +206,7 @@ def issue_refund(
         conflict_refund = None
         if idempotency_key:
             conflict_refund = (
-                db.query(Refund)
-                .filter(Refund.idempotency_key == str(idempotency_key))
-                .first()
+                db.query(Refund).filter(Refund.idempotency_key == str(idempotency_key)).first()
             )
         if not conflict_refund:
             conflict_refund = (
@@ -289,7 +284,9 @@ def check_inventory(db: Session, product_id: str | int) -> ToolResult:
     pid = str(product_id)
     prod = db.get(Product, pid)
     if not prod:
-        return ToolResult(success=False, data={}, error=f"Product {product_id} not found in inventory")
+        return ToolResult(
+            success=False, data={}, error=f"Product {product_id} not found in inventory"
+        )
 
     return ToolResult(
         success=True,

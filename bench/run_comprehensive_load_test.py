@@ -12,13 +12,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
-from pathlib import Path
 import subprocess
 import sys
 import time
-import urllib.request
 import urllib.error
+import urllib.request
+from pathlib import Path
+
 import psutil
 
 # Ensure root argvtix directory and src are on sys.path
@@ -29,7 +29,7 @@ if root_dir not in sys.path:
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-from bench.load_test import run_profile, PROFILES, fetch_system_metrics
+from bench.load_test import fetch_system_metrics, run_profile
 
 
 def wait_for_server(base_url: str, timeout: float = 15.0):
@@ -51,7 +51,16 @@ async def main():
 
     # Spawn FastAPI uvicorn server in a separate process
     proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "argvtix.gateway.app:app", "--port", str(port), "--log-level", "warning"],
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "argvtix.gateway.app:app",
+            "--port",
+            str(port),
+            "--log-level",
+            "warning",
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -68,17 +77,51 @@ async def main():
         print(f"Initial Metrics: {json.dumps(initial_metrics)}")
 
         tiers = [
-            ("smoke", 5, {"concurrency": 5, "total_requests": 50, "description": "Smoke Verification (5 workers)"}),
-            ("load", 15, {"concurrency": 15, "total_requests": 150, "description": "Sustained Load (15 workers)"}),
-            ("stress", 30, {"concurrency": 30, "total_requests": 250, "description": "Stress Saturation (30 workers)"}),
-            ("spike", 50, {"concurrency": 50, "total_requests": 200, "description": "Traffic Spike Burst (50 workers)"}),
+            (
+                "smoke",
+                5,
+                {
+                    "concurrency": 5,
+                    "total_requests": 50,
+                    "description": "Smoke Verification (5 workers)",
+                },
+            ),
+            (
+                "load",
+                15,
+                {
+                    "concurrency": 15,
+                    "total_requests": 150,
+                    "description": "Sustained Load (15 workers)",
+                },
+            ),
+            (
+                "stress",
+                30,
+                {
+                    "concurrency": 30,
+                    "total_requests": 250,
+                    "description": "Stress Saturation (30 workers)",
+                },
+            ),
+            (
+                "spike",
+                50,
+                {
+                    "concurrency": 50,
+                    "total_requests": 200,
+                    "description": "Traffic Spike Burst (50 workers)",
+                },
+            ),
         ]
 
         tier_reports = {}
         for tier_name, workers, profile_config in tiers:
-            print(f"\n=======================================================")
-            print(f"STARTING TIER: {tier_name.upper()} ({workers} concurrent workers, {profile_config['total_requests']} reqs)")
-            print(f"=======================================================")
+            print("\n=======================================================")
+            print(
+                f"STARTING TIER: {tier_name.upper()} ({workers} concurrent workers, {profile_config['total_requests']} reqs)"
+            )
+            print("=======================================================")
 
             cpu_samples = []
             mem_samples = []
@@ -117,12 +160,16 @@ async def main():
                 "peak_memory_mb": round(peak_mem, 1),
                 "duration_seconds": round(tier_duration, 2),
             }
-            report["database_pool"] = post_metrics.get("health", {}).get("database", {}).get("pool", {})
+            report["database_pool"] = (
+                post_metrics.get("health", {}).get("database", {}).get("pool", {})
+            )
             report["cache_status"] = post_metrics.get("cache", {})
 
-            print(f"Tier {tier_name.upper()} completed: {report['requests_per_second']} rps, "
-                  f"p50: {report['latency_percentiles_ms']['p50']}ms, p95: {report['latency_percentiles_ms']['p95']}ms, "
-                  f"5xx errors: {report['server_errors_5xx']}, 4xx errors: {report['client_errors_4xx']}")
+            print(
+                f"Tier {tier_name.upper()} completed: {report['requests_per_second']} rps, "
+                f"p50: {report['latency_percentiles_ms']['p50']}ms, p95: {report['latency_percentiles_ms']['p95']}ms, "
+                f"5xx errors: {report['server_errors_5xx']}, 4xx errors: {report['client_errors_4xx']}"
+            )
             print(f"Peak Memory: {peak_mem:.1f} MB, Avg CPU: {avg_cpu:.1f}%")
 
             tier_reports[tier_name] = report
@@ -141,10 +188,14 @@ async def main():
             "tiers": tier_reports,
             "summary": {
                 "total_requests_executed": sum(r["total_requests"] for r in tier_reports.values()),
-                "total_server_5xx_errors": sum(r["server_errors_5xx"] for r in tier_reports.values()),
-                "total_client_4xx_errors": sum(r["client_errors_4xx"] for r in tier_reports.values()),
+                "total_server_5xx_errors": sum(
+                    r["server_errors_5xx"] for r in tier_reports.values()
+                ),
+                "total_client_4xx_errors": sum(
+                    r["client_errors_4xx"] for r in tier_reports.values()
+                ),
                 "peak_concurrency_tested": 100,
-            }
+            },
         }
 
         output_path = "bench/staging_load_report.json"

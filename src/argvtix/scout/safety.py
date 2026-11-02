@@ -10,45 +10,50 @@ Safety Controls FIRST:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import os
-from pathlib import Path
 import threading
 import time
-from typing import Optional
+from datetime import UTC, datetime
+from pathlib import Path
+
 from pydantic import BaseModel, Field
 
 
 class ScoutSafetyViolationError(Exception):
     """Raised when a safety control or boundary is breached."""
+
     pass
 
 
 class KillSwitchActivatedError(ScoutSafetyViolationError):
     """Raised when the emergency kill switch has been triggered."""
+
     pass
 
 
 class CircuitBreakerTrippedError(ScoutSafetyViolationError):
     """Raised when target service fails 3x consecutively (5xx responses)."""
+
     pass
 
 
 class RateLimitExceededError(ScoutSafetyViolationError):
     """Raised when request rate exceeds allowed max_rpm."""
+
     pass
 
 
 class SafetyMetrics(BaseModel):
     """Real-time telemetry for Scout safety controller."""
+
     total_requests: int = 0
     total_conversations: int = 0
     consecutive_5xx: int = 0
     kill_switch_active: bool = False
-    kill_reason: Optional[str] = None
+    kill_reason: str | None = None
     circuit_breaker_tripped: bool = False
-    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    stopped_at: Optional[datetime] = None
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    stopped_at: datetime | None = None
 
 
 class RateLimiter:
@@ -88,7 +93,7 @@ class ScoutSafetyController:
         max_rpm: int = 12,
         max_turns_per_conversation: int = 8,
         max_conversations: int = 150,
-        kill_file_path: Optional[str | Path] = None,
+        kill_file_path: str | Path | None = None,
         max_run_seconds: float = 900.0,  # 15 minutes max
     ):
         self.rate_limiter = RateLimiter(max_rpm=max_rpm)
@@ -109,7 +114,7 @@ class ScoutSafetyController:
             self._kill_event.set()
             self.metrics.kill_switch_active = True
             self.metrics.kill_reason = reason
-            self.metrics.stopped_at = datetime.now(timezone.utc)
+            self.metrics.stopped_at = datetime.now(UTC)
 
     def is_kill_switch_active(self) -> bool:
         """Checks programmatic event, file-based flag, and dead-man timer."""
@@ -127,7 +132,7 @@ class ScoutSafetyController:
             return True
 
         # Check dead-man timer
-        runtime = (datetime.now(timezone.utc) - self.metrics.started_at).total_seconds()
+        runtime = (datetime.now(UTC) - self.metrics.started_at).total_seconds()
         if runtime > self.max_run_seconds:
             self.trigger_kill_switch(f"Max run duration ({self.max_run_seconds}s) exceeded")
             return True
@@ -164,7 +169,9 @@ class ScoutSafetyController:
         deadline = time.monotonic() + timeout_sec
         while time.monotonic() < deadline:
             if self.is_kill_switch_active():
-                raise KillSwitchActivatedError("[SCOUT_HALTED] Kill switch active during rate-limit wait.")
+                raise KillSwitchActivatedError(
+                    "[SCOUT_HALTED] Kill switch active during rate-limit wait."
+                )
 
             if self.rate_limiter.acquire(timeout_sec=0.2):
                 with self._lock:
@@ -182,7 +189,9 @@ class ScoutSafetyController:
                 self.metrics.consecutive_5xx += 1
                 if self.metrics.consecutive_5xx >= 3:
                     self.metrics.circuit_breaker_tripped = True
-                    self.trigger_kill_switch("Target server returned 3 consecutive 5xx errors; auto-aborted to protect target.")
+                    self.trigger_kill_switch(
+                        "Target server returned 3 consecutive 5xx errors; auto-aborted to protect target."
+                    )
             else:
                 self.metrics.consecutive_5xx = 0
 

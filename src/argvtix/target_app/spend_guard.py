@@ -7,12 +7,13 @@ Enforces hard financial caps on LLM token expenditure:
 - Tracks running token usage and cost
 - Rejects calls exceeding budget with [SPEND_CAP_EXCEEDED]
 """
+
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
 import logging
 import os
 import threading
+from datetime import UTC, date, datetime
 
 logger = logging.getLogger("argvtix.spend_guard")
 
@@ -37,7 +38,7 @@ class LLMSpendGuard:
         )
 
         self._lock = threading.Lock()
-        self._current_date: date = datetime.now(timezone.utc).date()
+        self._current_date: date = datetime.now(UTC).date()
         self._current_month: tuple[int, int] = (self._current_date.year, self._current_date.month)
         self._daily_spend: float = 0.0
         self._monthly_spend: float = 0.0
@@ -46,7 +47,7 @@ class LLMSpendGuard:
 
     def _rollover_if_needed(self) -> None:
         """Resets counters when entering a new calendar day or month."""
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         if today != self._current_date:
             self._daily_spend = 0.0
             self._current_date = today
@@ -98,8 +99,14 @@ class LLMSpendGuard:
         """Returns snapshot of current budget consumption and policy status."""
         with self._lock:
             self._rollover_if_needed()
-            daily_pct = (self._daily_spend / self.daily_cap_usd * 100.0) if self.daily_cap_usd > 0 else 0.0
-            monthly_pct = (self._monthly_spend / self.monthly_cap_usd * 100.0) if self.monthly_cap_usd > 0 else 0.0
+            daily_pct = (
+                (self._daily_spend / self.daily_cap_usd * 100.0) if self.daily_cap_usd > 0 else 0.0
+            )
+            monthly_pct = (
+                (self._monthly_spend / self.monthly_cap_usd * 100.0)
+                if self.monthly_cap_usd > 0
+                else 0.0
+            )
 
             return {
                 "daily_spend_usd": self._daily_spend,
@@ -110,7 +117,8 @@ class LLMSpendGuard:
                 "monthly_used_percent": round(monthly_pct, 2),
                 "total_calls": self._total_calls,
                 "blocked_calls": self._blocked_calls,
-                "is_capped": (self._daily_spend >= self.daily_cap_usd) or (self._monthly_spend >= self.monthly_cap_usd),
+                "is_capped": (self._daily_spend >= self.daily_cap_usd)
+                or (self._monthly_spend >= self.monthly_cap_usd),
             }
 
     def reset(self) -> None:

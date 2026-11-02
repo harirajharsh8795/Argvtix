@@ -105,14 +105,16 @@ def handle_ticket(ticket):
     response = ai_agent.process(ticket)
     return response
 
+
 # HAMARI LIBRARY ADD KARNE KE BAAD (sirf 3 lines extra):
 from argvtix import trace, guard
 
+
 def handle_ticket(ticket):
-    with trace.record():                    # ← Line 1: Recording shuru
-        decision = guard.check(ticket)       # ← Line 2: Guard check
+    with trace.record():  # ← Line 1: Recording shuru
+        decision = guard.check(ticket)  # ← Line 2: Guard check
         response = ai_agent.process(ticket)
-    return response                          # Bas! Baaki sab automatic
+    return response  # Bas! Baaki sab automatic
 ```
 
 **Client ke code me sirf 3 lines add hui.** Baaki sab hamara platform khud handle karta hai.
@@ -177,7 +179,8 @@ docker compose up
 # Clinic ke AI chatbot ke code me sirf ye add:
 import argvtix
 
-@argvtix.trace()                          # ← Har call record hogi
+
+@argvtix.trace()  # ← Har call record hogi
 @argvtix.guard(require_approval_above=1)  # ← 1+ appointment pe human approval
 def book_appointment(patient, doctor, time):
     # ... clinic ka existing code ...

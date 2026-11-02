@@ -14,7 +14,6 @@ import secrets
 import urllib.parse
 import urllib.request
 from contextlib import asynccontextmanager
-import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
@@ -33,9 +32,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 logger = logging.getLogger("argvtix.gateway")
 if not logger.handlers:
     _log_handler = logging.StreamHandler()
-    _log_formatter = logging.Formatter(
-        "[%(asctime)s] [%(levelname)s] [argvtix] %(message)s"
-    )
+    _log_formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [argvtix] %(message)s")
     _log_handler.setFormatter(_log_formatter)
     logger.addHandler(_log_handler)
     logger.setLevel(logging.INFO)
@@ -47,6 +44,8 @@ from argvtix.db.models import (
     WatchdogFindingRecord,
 )
 from argvtix.db.session import engine, get_db, init_db
+from argvtix.evals.benchmarks.adapters import MockAdapter
+from argvtix.evals.benchmarks.runner import BenchmarkRunner
 from argvtix.evals.claims import ClaimVerifier
 from argvtix.evals.claims.planted_cases import get_planted_cases
 from argvtix.evals.passk import PassKRunner
@@ -61,6 +60,18 @@ from argvtix.guard import (
 )
 from argvtix.replay.engine import ReplayEngine
 from argvtix.replay.golden import filter_golden_cases, load_golden_cases
+from argvtix.scout import (
+    MissingAuthorizationError,
+    ScopeConfig,
+    ScopeExpiredError,
+    ScoutAuditReport,
+    ScoutRunner,
+    ScoutSafetyController,
+    ScoutSafetyViolationError,
+    TargetHostNotAllowedError,
+    TargetPathNotAllowedError,
+)
+from argvtix.scout.probes import default_probe_registry
 from argvtix.security.auth import (
     Role,
     TokenPayload,
@@ -72,6 +83,7 @@ from argvtix.security.auth import (
 from argvtix.security.dlp import DLPFilter
 from argvtix.security.pii import PIIMasker
 from argvtix.security.redteam.runner import RedTeamRunner
+from argvtix.target_app.agent import ShopOpsAgent
 from argvtix.target_app.llm import MockLLM
 from argvtix.target_app.rag.policy_docs import POLICY_DOCUMENTS
 from argvtix.target_app.spend_guard import spend_guard
@@ -83,23 +95,7 @@ from argvtix.watchdog.conflicts.detector import PolicyConflictDetector
 from argvtix.watchdog.engine import WatchdogEngine
 from argvtix.watchdog.reconcile.engine import ReconciliationEngine
 from argvtix.watchdog.reconcile.schemas import ExternalEntityState
-from argvtix.scout import (
-    ScopeConfig,
-    ScoutAuditReport,
-    ScoutRunner,
-    ScoutSafetyController,
-    ScoutSafetyViolationError,
-    TargetHostNotAllowedError,
-    TargetPathNotAllowedError,
-    ScopeExpiredError,
-    MissingAuthorizationError,
-)
-from argvtix.scout.probes import default_probe_registry
-from argvtix.target_app.agent import ShopOpsAgent
 from argvtix.ws.router import router as ws_router
-from argvtix.evals.benchmarks.runner import BenchmarkRunner
-from argvtix.evals.benchmarks.adapters import MockAdapter
-
 
 # ---------------------------------------------------------------------------
 # Security Middlewares
@@ -142,7 +138,9 @@ class MaxPayloadSizeMiddleware(BaseHTTPMiddleware):
                 if int(content_length) > self.MAX_PAYLOAD_BYTES:
                     return JSONResponse(
                         status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        content={"detail": "Payload too large. Maximum permitted body size is 5MB."},
+                        content={
+                            "detail": "Payload too large. Maximum permitted body size is 5MB."
+                        },
                     )
             except ValueError:
                 pass
@@ -182,12 +180,14 @@ async def lifespan(app: FastAPI):
 
     if is_prod:
         from argvtix.db.session import DATABASE_URL
+
         if DATABASE_URL.startswith("sqlite"):
             raise RuntimeError(
                 "CRITICAL PRODUCTION CONFIGURATION ERROR: Production environment detected, but DATABASE_URL "
                 "is pointing to SQLite ('sqlite:///...'). Production requires a managed database (PostgreSQL)."
             )
         from argvtix.security.auth import get_jwt_secret_key
+
         get_jwt_secret_key()
 
     init_db()
@@ -314,16 +314,18 @@ def verify_cloudflare_turnstile(token: str, ip: str | None = None) -> bool:
 
     if not secret:
         if is_prod:
-            logger.error("Turnstile verification failed closed: CLOUDFLARE_TURNSTILE_SECRET_KEY not configured in production.")
+            logger.error(
+                "Turnstile verification failed closed: CLOUDFLARE_TURNSTILE_SECRET_KEY not configured in production."
+            )
             return False
         # In test / local mode without live Cloudflare credentials, accept test tokens
         return True
-    
+
     verify_url = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
     data = {"secret": secret, "response": token}
     if ip:
         data["remoteip"] = ip
-    
+
     try:
         encoded = urllib.parse.urlencode(data).encode("utf-8")
         req = urllib.request.Request(verify_url, data=encoded, method="POST")
@@ -361,13 +363,25 @@ def submit_contact_form(
     use_case = payload.use_case.strip()
 
     if not name or len(name) > 120:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Valid full name required (max 120 chars).")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Valid full name required (max 120 chars).",
+        )
     if "@" not in email or "." not in email or len(email) > 180:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Valid business email required.")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Valid business email required.",
+        )
     if not company or len(company) > 120:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Company or organization name required.")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Company or organization name required.",
+        )
     if not use_case or len(use_case) < 10 or len(use_case) > 2000:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Please describe your AI agent use case (10-2000 chars).")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Please describe your AI agent use case (10-2000 chars).",
+        )
 
     # 3. Cloudflare Turnstile token validation
     client_ip = request.client.host if request.client else None
@@ -391,7 +405,9 @@ def submit_contact_form(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cloudflare Turnstile verification challenge required.",
             )
-        if payload.turnstile_token and not verify_cloudflare_turnstile(payload.turnstile_token, client_ip):
+        if payload.turnstile_token and not verify_cloudflare_turnstile(
+            payload.turnstile_token, client_ip
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Security verification challenge failed. Please refresh and retry.",
@@ -557,18 +573,15 @@ def get_trace_stats(db: Session = Depends(get_db)) -> dict[str, Any]:
     if cached is not None:
         return cached
 
-    row = (
-        db.query(
-            func.count(TraceRecord.id).label("total_traces"),
-            func.sum(
-                case((TraceRecord.status == TraceStatus.COMPLETED.value, 1), else_=0)
-            ).label("successful"),
-            func.avg(TraceRecord.total_latency_ms).label("avg_latency"),
-            func.sum(TraceRecord.total_cost_usd).label("total_cost"),
-            func.sum(TraceRecord.total_tokens).label("total_tokens"),
-        )
-        .first()
-    )
+    row = db.query(
+        func.count(TraceRecord.id).label("total_traces"),
+        func.sum(case((TraceRecord.status == TraceStatus.COMPLETED.value, 1), else_=0)).label(
+            "successful"
+        ),
+        func.avg(TraceRecord.total_latency_ms).label("avg_latency"),
+        func.sum(TraceRecord.total_cost_usd).label("total_cost"),
+        func.sum(TraceRecord.total_tokens).label("total_tokens"),
+    ).first()
 
     total_traces = int(row.total_traces or 0)
     if total_traces == 0:
@@ -603,8 +616,6 @@ def get_trace_stats(db: Session = Depends(get_db)) -> dict[str, Any]:
 def get_cache_metrics() -> dict[str, Any]:
     """Return real-time cache observability, hit rates, and capacity metrics."""
     return cache_manager.get_metrics()
-
-
 
 
 @app.get("/api/v1/traces/{trace_id}", tags=["Traces"])
@@ -766,7 +777,9 @@ def run_evaluations(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Run golden benchmark evaluations and return performance summary."""
-    cases = filter_golden_cases(workflow=request.workflow) if request.workflow else load_golden_cases()
+    cases = (
+        filter_golden_cases(workflow=request.workflow) if request.workflow else load_golden_cases()
+    )
     if request.max_cases:
         cases = cases[: request.max_cases]
 
@@ -802,7 +815,9 @@ def run_regression_check(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Run regression comparison between baseline and candidate configurations."""
-    cases = filter_golden_cases(workflow=request.workflow) if request.workflow else load_golden_cases()
+    cases = (
+        filter_golden_cases(workflow=request.workflow) if request.workflow else load_golden_cases()
+    )
     engine_inst = RegressionEngine(db=db)
     base_llm = MockLLM()
     cand_llm = MockLLM()
@@ -998,15 +1013,17 @@ def verify_claims_endpoint(request: VerifyClaimsRequest) -> dict[str, Any]:
     if request.state_snapshot:
         if isinstance(request.state_snapshot, dict):
             # Transform database state snapshot into verifiable tool/entity log
-            tools.append({
-                "tool_name": "database_snapshot",
-                "tool_args": {"order_id": request.state_snapshot.get("order_id", "entity")},
-                "tool_result": request.state_snapshot,
-                "is_success": (
-                    request.state_snapshot.get("refund_status") not in ("failed", "error")
-                    and request.state_snapshot.get("status") not in ("failed", "error")
-                ),
-            })
+            tools.append(
+                {
+                    "tool_name": "database_snapshot",
+                    "tool_args": {"order_id": request.state_snapshot.get("order_id", "entity")},
+                    "tool_result": request.state_snapshot,
+                    "is_success": (
+                        request.state_snapshot.get("refund_status") not in ("failed", "error")
+                        and request.state_snapshot.get("status") not in ("failed", "error")
+                    ),
+                }
+            )
         elif isinstance(request.state_snapshot, list):
             tools.extend(request.state_snapshot)
 
@@ -1027,7 +1044,9 @@ def verify_claims_endpoint(request: VerifyClaimsRequest) -> dict[str, Any]:
     res["claims"] = [
         {
             "claim_id": r.claim_id,
-            "claim_type": r.claim.claim_type.value if hasattr(r.claim.claim_type, "value") else str(r.claim.claim_type),
+            "claim_type": r.claim.claim_type.value
+            if hasattr(r.claim.claim_type, "value")
+            else str(r.claim.claim_type),
             "claim_text": r.claim.source_text,
             "stated_status": r.claim.claimed_status,
             "verdict": r.verdict.value if hasattr(r.verdict, "value") else str(r.verdict),
@@ -1071,15 +1090,19 @@ def run_passk_endpoint(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Run pass^k multi-trial reliability evaluation across golden workflows."""
-    cases = filter_golden_cases(workflow=request.workflow) if request.workflow else load_golden_cases()
+    cases = (
+        filter_golden_cases(workflow=request.workflow) if request.workflow else load_golden_cases()
+    )
     llm = MockLLM()
     replayer = ReplayEngine(db=db, default_llm=llm)
 
     # Wrap each golden case into an evaluator function
     eval_cases = []
     for c in cases[:15]:  # Run on representative slice for fast API response
+
         def make_eval(case):
             return lambda: replayer.replay_case(case, llm=llm).is_passed
+
         eval_cases.append((c.id, make_eval(c)))
 
     runner = PassKRunner(k=request.k)
@@ -1400,6 +1423,7 @@ def list_scout_probes_endpoint(
 ) -> dict[str, Any]:
     """Lists all available audit probe scenarios and category coverage."""
     from argvtix.scout.probes.base import ProbeCategory
+
     cat_filter = None
     if category:
         try:
@@ -1438,6 +1462,7 @@ def run_scout_audit_endpoint(
         return res.get("response", "")
 
     from argvtix.scout.probes.base import ProbeCategory
+
     selected = None
     if request.category:
         try:
@@ -1446,18 +1471,24 @@ def run_scout_audit_endpoint(
             pass
 
     if request.max_probes and selected:
-        selected = selected[:request.max_probes]
+        selected = selected[: request.max_probes]
     elif request.max_probes:
-        selected = default_probe_registry.list_all()[:request.max_probes]
+        selected = default_probe_registry.list_all()[: request.max_probes]
 
     try:
         report = runner.run_audit(target_fn=target_caller, selected_probes=selected)
     except TargetHostNotAllowedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Egress forbidden: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=f"Egress forbidden: {str(e)}"
+        )
     except (ScopeExpiredError, MissingAuthorizationError, TargetPathNotAllowedError) as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid scope: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid scope: {str(e)}"
+        )
     except ScoutSafetyViolationError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Safety control violation: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Safety control violation: {str(e)}"
+        )
     finally:
         if safety_ctrl in scout_active_safety_controllers:
             scout_active_safety_controllers.remove(safety_ctrl)
@@ -1516,13 +1547,17 @@ def get_scout_report_endpoint(
     """Retrieves specific Scout audit report in JSON, Markdown, or HTML format."""
     report = scout_reports.get(report_id)
     if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Report '{report_id}' not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Report '{report_id}' not found."
+        )
 
     if format.lower() == "markdown":
         from fastapi.responses import PlainTextResponse
+
         return PlainTextResponse(content=report.to_markdown())
     elif format.lower() == "html":
         from fastapi.responses import HTMLResponse
+
         return HTMLResponse(content=report.to_html())
     return report.model_dump()
 
@@ -1536,7 +1571,9 @@ def signoff_scout_report_endpoint(
     """Human review gate sign-off for a Scout audit report."""
     report = scout_reports.get(report_id)
     if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Report '{report_id}' not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Report '{report_id}' not found."
+        )
 
     report.sign_off(
         reviewer_id=user.sub,
@@ -1558,7 +1595,7 @@ def signoff_scout_report_endpoint(
 
 
 class BenchmarkRunRequest(BaseModel):
-    models: list[str] = ["mock"]   # Use MockAdapter by default to avoid API keys requirement
+    models: list[str] = ["mock"]  # Use MockAdapter by default to avoid API keys requirement
     workflow: str | None = None
     max_cases: int | None = None
 
@@ -1576,14 +1613,17 @@ def run_benchmark_endpoint(
     (requires corresponding API keys in environment).
     """
     from argvtix.evals.benchmarks.adapters import (
-        GeminiAdapter, ClaudeAdapter, GPT4oAdapter, LiteLLMAdapter,
+        ClaudeAdapter,
+        GeminiAdapter,
+        GPT4oAdapter,
+        LiteLLMAdapter,
     )
 
     _adapter_map = {
-        "mock":      MockAdapter,
-        "gemini":    GeminiAdapter,
-        "claude":    ClaudeAdapter,
-        "gpt4o":     GPT4oAdapter,
+        "mock": MockAdapter,
+        "gemini": GeminiAdapter,
+        "claude": ClaudeAdapter,
+        "gpt4o": GPT4oAdapter,
         "gpt4o-mini": lambda: LiteLLMAdapter("gpt-4o-mini"),
     }
 
@@ -1631,19 +1671,19 @@ from pathlib import Path
 
 _ui_dist_dir = Path(__file__).resolve().parent.parent.parent.parent / "ui" / "dist"
 if _ui_dist_dir.is_dir() and (_ui_dist_dir / "index.html").is_file():
-    from fastapi.staticfiles import StaticFiles
     from fastapi.responses import FileResponse
+    from fastapi.staticfiles import StaticFiles
 
     if (_ui_dist_dir / "assets").is_dir():
         app.mount("/assets", StaticFiles(directory=str(_ui_dist_dir / "assets")), name="ui-assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa_frontend(full_path: str):
-        if full_path.startswith(("api", "health", "ready", "metrics", "docs", "redoc", "openapi.json")):
+        if full_path.startswith(
+            ("api", "health", "ready", "metrics", "docs", "redoc", "openapi.json")
+        ):
             return JSONResponse(status_code=404, content={"detail": "Not found"})
         target_file = _ui_dist_dir / full_path
         if full_path and target_file.is_file():
             return FileResponse(target_file)
         return FileResponse(_ui_dist_dir / "index.html")
-
-

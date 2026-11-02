@@ -6,15 +6,16 @@ Dispatches real-time security, policy, and anomaly alerts via:
 2. Slack Webhook (enterprise channel notifications)
 3. Email notification stub (operations & incident response)
 """
+
 from __future__ import annotations
 
-from collections import deque
-from datetime import datetime, timezone
-from enum import Enum
 import logging
 import os
-from typing import Any
 import uuid
+from collections import deque
+from datetime import UTC, datetime
+from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -35,13 +36,14 @@ class AlertChannel(str, Enum):
 
 class AlertPayload(BaseModel):
     """Structured alert event emitted by Watchdog, Guard, or Anomaly detector."""
+
     alert_id: str = Field(default_factory=lambda: f"alt_{uuid.uuid4().hex[:12]}")
     title: str
     message: str
     severity: AlertSeverity = AlertSeverity.WARNING
     source: str = "watchdog"  # "watchdog" | "guard" | "anomaly" | "reconcile"
     metadata: dict[str, Any] = Field(default_factory=dict)
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AlertDispatcher:

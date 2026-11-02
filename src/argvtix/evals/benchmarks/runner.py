@@ -9,13 +9,14 @@ Usage:
     python -m argvtix.evals.benchmarks.runner --models gemini --workflow refund
     python -m argvtix.evals.benchmarks.runner --dry-run   # Mock only, no API calls
 """
+
 from __future__ import annotations
 
 import argparse
-import statistics
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from datetime import UTC
 from typing import Any
 
 from argvtix.evals.benchmarks.adapters import (
@@ -29,14 +30,15 @@ from argvtix.evals.benchmarks.adapters import (
 )
 from argvtix.replay.golden import GoldenCase, filter_golden_cases, load_golden_cases
 
-
 # ---------------------------------------------------------------------------
 # Result schemas
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CaseResult:
     """Result for a single golden case run against one model."""
+
     case_id: str
     model_id: str
     response_text: str
@@ -51,6 +53,7 @@ class CaseResult:
 @dataclass
 class ModelBenchmarkResult:
     """Aggregated benchmark results for a single model."""
+
     model_id: str
     total_cases: int
     passed: int
@@ -72,14 +75,15 @@ class ModelBenchmarkResult:
 @dataclass
 class BenchmarkRunResult:
     """Full benchmark run comparing N models on M cases."""
+
     run_id: str
     timestamp: str
     total_models: int
     total_cases: int
     model_results: list[ModelBenchmarkResult] = field(default_factory=list)
-    winner_accuracy: str = ""          # model_id with best accuracy
-    winner_cost: str = ""             # model_id with lowest cost
-    winner_latency: str = ""          # model_id with lowest p50 latency
+    winner_accuracy: str = ""  # model_id with best accuracy
+    winner_cost: str = ""  # model_id with lowest cost
+    winner_latency: str = ""  # model_id with lowest p50 latency
 
     def ranked_by_accuracy(self) -> list[ModelBenchmarkResult]:
         return sorted(self.model_results, key=lambda r: r.accuracy_pct, reverse=True)
@@ -101,12 +105,12 @@ _SYSTEM_PROMPT = (
 )
 
 _INTENT_KEYWORDS: dict[str, list[str]] = {
-    "refund":       ["refund", "money back", "reimburse"],
-    "cancel":       ["cancel", "cancellation", "cancel order"],
-    "balance":      ["balance", "wallet", "credit"],
-    "inventory":    ["inventory", "stock", "available"],
+    "refund": ["refund", "money back", "reimburse"],
+    "cancel": ["cancel", "cancellation", "cancel order"],
+    "balance": ["balance", "wallet", "credit"],
+    "inventory": ["inventory", "stock", "available"],
     "subscription": ["subscription", "plan", "renew"],
-    "general":      [],
+    "general": [],
 }
 
 
@@ -122,15 +126,13 @@ def _extract_intent(text: str) -> str:
 
 def _build_eval_prompt(case: GoldenCase) -> str:
     text = getattr(case, "ticket_text", None) or getattr(case, "input_text", "")
-    return (
-        f"Customer message: {text}\n\n"
-        "Respond as the AI agent. Be concise and actionable."
-    )
+    return f"Customer message: {text}\n\nRespond as the AI agent. Be concise and actionable."
 
 
 # ---------------------------------------------------------------------------
 # Per-model evaluator
 # ---------------------------------------------------------------------------
+
 
 def _evaluate_model(
     adapter: ModelAdapter,
@@ -146,32 +148,36 @@ def _evaluate_model(
         response: ModelResponse = adapter.generate(prompt, system_prompt=_SYSTEM_PROMPT)
 
         if response.error:
-            results.append(CaseResult(
-                case_id=cid,
-                model_id=adapter.model_id,
-                response_text="",
-                expected_intent=case.workflow,
-                predicted_intent="error",
-                intent_match=False,
-                latency_ms=0,
-                cost_usd=0,
-                error=response.error,
-            ))
+            results.append(
+                CaseResult(
+                    case_id=cid,
+                    model_id=adapter.model_id,
+                    response_text="",
+                    expected_intent=case.workflow,
+                    predicted_intent="error",
+                    intent_match=False,
+                    latency_ms=0,
+                    cost_usd=0,
+                    error=response.error,
+                )
+            )
             continue
 
         predicted = _extract_intent(response.text)
         match = predicted == case.workflow or case.workflow == "general"
 
-        results.append(CaseResult(
-            case_id=cid,
-            model_id=adapter.model_id,
-            response_text=response.text,
-            expected_intent=case.workflow,
-            predicted_intent=predicted,
-            intent_match=match,
-            latency_ms=response.latency_ms,
-            cost_usd=response.cost_usd,
-        ))
+        results.append(
+            CaseResult(
+                case_id=cid,
+                model_id=adapter.model_id,
+                response_text=response.text,
+                expected_intent=case.workflow,
+                predicted_intent=predicted,
+                intent_match=match,
+                latency_ms=response.latency_ms,
+                cost_usd=response.cost_usd,
+            )
+        )
         latencies.append(response.latency_ms)
 
     # Aggregate
@@ -208,6 +214,7 @@ def _evaluate_model(
 # ---------------------------------------------------------------------------
 # Main benchmark runner
 # ---------------------------------------------------------------------------
+
 
 class BenchmarkRunner:
     """
@@ -248,15 +255,15 @@ class BenchmarkRunner:
             cases = cases[:max_cases]
 
         run_id = f"bench-{int(time.time())}"
-        from datetime import datetime, timezone
-        ts = datetime.now(timezone.utc).isoformat()
+        from datetime import datetime
+
+        ts = datetime.now(UTC).isoformat()
 
         model_results: list[ModelBenchmarkResult] = []
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as pool:
             future_map = {
-                pool.submit(_evaluate_model, adapter, cases): adapter
-                for adapter in self.adapters
+                pool.submit(_evaluate_model, adapter, cases): adapter for adapter in self.adapters
             }
             for future in as_completed(future_map):
                 result = future.result()
@@ -285,11 +292,11 @@ class BenchmarkRunner:
 # ---------------------------------------------------------------------------
 
 _ADAPTER_MAP: dict[str, Any] = {
-    "gemini":     GeminiAdapter,
-    "claude":     ClaudeAdapter,
-    "gpt4o":      GPT4oAdapter,
+    "gemini": GeminiAdapter,
+    "claude": ClaudeAdapter,
+    "gpt4o": GPT4oAdapter,
     "gpt4o-mini": lambda: LiteLLMAdapter("gpt-4o-mini"),
-    "mock":       MockAdapter,
+    "mock": MockAdapter,
 }
 
 

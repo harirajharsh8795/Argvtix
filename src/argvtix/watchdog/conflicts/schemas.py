@@ -2,6 +2,7 @@
 Policy Conflict Detection Schemas
 Enterprise AI Reliability Platform (ARGVTIX)
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -21,7 +22,9 @@ class PolicyClause(BaseModel):
     clause_id: str
     doc_id: str
     doc_title: str
-    topic: str  # e.g., 'refund_window', 'approval_threshold', 'cancellation_window', 'data_retention'
+    topic: (
+        str  # e.g., 'refund_window', 'approval_threshold', 'cancellation_window', 'data_retention'
+    )
     text: str
     numeric_value: float | None = None
     unit: str | None = None  # e.g., 'days', 'inr', 'hours'

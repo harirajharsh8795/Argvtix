@@ -11,35 +11,36 @@ Design:
   - Typed event schema so the React dashboard can route by event_type
   - Automatic cleanup on client disconnect
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
-from weakref import WeakSet
-
 
 # ---------------------------------------------------------------------------
 # Event schema
 # ---------------------------------------------------------------------------
 
+
 class EventType(str, Enum):
-    GUARD_DECISION     = "guard.decision"
+    GUARD_DECISION = "guard.decision"
     APPROVAL_REQUESTED = "approval.requested"
-    APPROVAL_RESOLVED  = "approval.resolved"
-    WATCHDOG_ALERT     = "watchdog.alert"
-    EVAL_COMPLETE      = "eval.complete"
-    BENCHMARK_RESULT   = "benchmark.result"
-    TRACE_RECORDED     = "trace.recorded"
-    SYSTEM_NOTICE      = "system.notice"
+    APPROVAL_RESOLVED = "approval.resolved"
+    WATCHDOG_ALERT = "watchdog.alert"
+    EVAL_COMPLETE = "eval.complete"
+    BENCHMARK_RESULT = "benchmark.result"
+    TRACE_RECORDED = "trace.recorded"
+    SYSTEM_NOTICE = "system.notice"
 
 
 @dataclass
 class Event:
     """Typed platform event pushed over WebSocket."""
+
     event_type: EventType
     payload: dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
@@ -48,9 +49,9 @@ class Event:
     def to_json(self) -> str:
         d = {
             "event_type": self.event_type.value,
-            "payload":    self.payload,
-            "timestamp":  self.timestamp,
-            "source":     self.source,
+            "payload": self.payload,
+            "timestamp": self.timestamp,
+            "source": self.source,
         }
         return json.dumps(d)
 
@@ -58,6 +59,7 @@ class Event:
 # ---------------------------------------------------------------------------
 # Connection Hub
 # ---------------------------------------------------------------------------
+
 
 class ConnectionHub:
     """
@@ -155,7 +157,9 @@ def get_hub() -> ConnectionHub:
     return _hub
 
 
-async def broadcast(event_type: EventType, payload: dict[str, Any], source: str = "argvtix") -> None:
+async def broadcast(
+    event_type: EventType, payload: dict[str, Any], source: str = "argvtix"
+) -> None:
     """
     Convenience function to fire-and-forget an event to all WS clients.
 

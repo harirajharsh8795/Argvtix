@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 class ProbeCategory(str, Enum):
     """The 12 Scout audit probe categories."""
+
     PROMPT_INJECTION = "PROMPT_INJECTION"
     PII_LEAKAGE = "PII_LEAKAGE"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
@@ -26,6 +28,7 @@ class ProbeCategory(str, Enum):
 
 class ProbeSeverity(str, Enum):
     """Audit finding severity."""
+
     CRITICAL = "CRITICAL"
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
@@ -34,20 +37,21 @@ class ProbeSeverity(str, Enum):
 
 class ProbeTurn(BaseModel):
     """A single turn in a multi-turn probe conversation."""
+
     turn_index: int = Field(default=1, ge=1)
     user_input: str = Field(description="Adversarial or functional test input sent to agent")
     expected_behavior: str = Field(
-        default="",
-        description="Expected safe response pattern or refusal"
+        default="", description="Expected safe response pattern or refusal"
     )
     unacceptable_keywords: list[str] = Field(
         default_factory=list,
-        description="Phrases or strings indicating failure if present in response"
+        description="Phrases or strings indicating failure if present in response",
     )
 
 
 class ScoutProbe(BaseModel):
     """Specification for an audit probe scenario."""
+
     probe_id: str
     category: ProbeCategory
     name: str
@@ -59,14 +63,14 @@ class ScoutProbe(BaseModel):
 
 class ProbeExecutionResult(BaseModel):
     """Outcome of executing a ScoutProbe against a target chatbot."""
+
     probe_id: str
     category: ProbeCategory
     severity: ProbeSeverity
     passed: bool
     conversation_history: list[dict[str, str]] = Field(
-        default_factory=list,
-        description="Sequence of {'role': 'user'|'assistant', 'content': str}"
+        default_factory=list, description="Sequence of {'role': 'user'|'assistant', 'content': str}"
     )
-    violation_details: Optional[str] = None
+    violation_details: str | None = None
     oracle_scores: dict[str, Any] = Field(default_factory=dict)
-    executed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    executed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -9,6 +9,7 @@ Computes core reliability, safety, and performance metrics for AI agent runs:
 5. Latency Percentiles (p50, p90, p95)
 6. Cost per 100 requests
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -18,6 +19,7 @@ from typing import Any
 @dataclass
 class LanguageMetrics:
     """Breakdown of accuracy across language variants."""
+
     total: int = 0
     passed: int = 0
     accuracy_percent: float = 0.0
@@ -26,6 +28,7 @@ class LanguageMetrics:
 @dataclass
 class EvaluationSummary:
     """Consolidated evaluation summary for a model/prompt run."""
+
     total_evals: int
     overall_accuracy: float
     intent_accuracy: float
@@ -52,9 +55,33 @@ def detect_language(text: str) -> str:
         return "hi"
 
     hinglish_keywords = {
-        "karo", "chahiye", "mera", "meri", "tha", "thi", "hai", "nahi", "aaya",
-        "ka", "ki", "ke", "ko", "se", "pe", "kya", "bhejo", "batao", "karna",
-        "paas", "kab", "kitna", "dobara", "galti", "paisa", "khata", "sambhal",
+        "karo",
+        "chahiye",
+        "mera",
+        "meri",
+        "tha",
+        "thi",
+        "hai",
+        "nahi",
+        "aaya",
+        "ka",
+        "ki",
+        "ke",
+        "ko",
+        "se",
+        "pe",
+        "kya",
+        "bhejo",
+        "batao",
+        "karna",
+        "paas",
+        "kab",
+        "kitna",
+        "dobara",
+        "galti",
+        "paisa",
+        "khata",
+        "sambhal",
     }
     words = set(text.lower().split())
     if len(words & hinglish_keywords) >= 1:
@@ -147,14 +174,14 @@ def compute_evaluation_summary(eval_items: list[dict[str, Any]]) -> EvaluationSu
         # Check intent
         exp_intent = str(item.get("expected_intent", "")).lower()
         act_intent = str(item.get("actual_intent", "")).lower()
-        i_match = (exp_intent == act_intent)
+        i_match = exp_intent == act_intent
         if i_match:
             intent_correct += 1
 
         # Check guard
         exp_guard = str(item.get("expected_guard", "")).lower()
         act_guard = str(item.get("actual_guard", "")).lower()
-        g_match = (exp_guard == act_guard)
+        g_match = exp_guard == act_guard
         if g_match:
             guard_correct += 1
 
@@ -162,7 +189,9 @@ def compute_evaluation_summary(eval_items: list[dict[str, Any]]) -> EvaluationSu
         exp_tool = item.get("expected_tool")
         act_tool = item.get("actual_tool")
         t_match = (exp_tool is None and act_tool is None) or (
-            exp_tool is not None and act_tool is not None and str(exp_tool).lower() == str(act_tool).lower()
+            exp_tool is not None
+            and act_tool is not None
+            and str(exp_tool).lower() == str(act_tool).lower()
         )
         if t_match:
             tool_correct += 1

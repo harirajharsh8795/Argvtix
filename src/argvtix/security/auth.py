@@ -6,19 +6,19 @@ Provides JWT token issuance, verification, and multi-tenant project scoping:
 - Gated by ARGVTIX_AUTH_ENABLED (defaults to false for dev ease)
 - Multi-tenancy: Scopes all queries by project_id
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from enum import Enum
 import os
+import secrets
+from datetime import UTC, datetime, timedelta
+from enum import Enum
 from typing import Annotated
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import jwt
 from pydantic import BaseModel, Field
-
-import secrets
 
 INSECURE_DEV_SECRETS: set[str] = {
     "argvtix_enterprise_secret_dev_key_change_in_prod",
@@ -67,6 +67,7 @@ security_scheme = HTTPBearer(auto_error=False)
 
 class Role(str, Enum):
     """User authorization roles."""
+
     ADMIN = "admin"
     OPERATOR = "operator"
     VIEWER = "viewer"
@@ -81,6 +82,7 @@ ROLE_HIERARCHY: dict[Role, int] = {
 
 class TokenPayload(BaseModel):
     """Standardized claims contained within Argvtix JWT tokens."""
+
     sub: str = Field(..., description="User ID / Subject")
     project_id: str = Field(default="default", description="Scoped enterprise project ID")
     role: Role = Field(default=Role.VIEWER, description="Assigned RBAC role")
@@ -158,7 +160,7 @@ def create_access_token(
     """Generates a signed HS256 JWT access token."""
     key = secret_key or get_jwt_secret_key()
     delta = expires_delta or timedelta(hours=DEFAULT_EXPIRATION_HOURS)
-    expire_dt = datetime.now(timezone.utc) + delta
+    expire_dt = datetime.now(UTC) + delta
     payload = {
         "sub": user_id,
         "project_id": project_id,
@@ -208,7 +210,7 @@ def get_current_user(
             sub="dev_admin",
             project_id="default",
             role=Role.ADMIN,
-            exp=int((datetime.now(timezone.utc) + timedelta(days=365)).timestamp()),
+            exp=int((datetime.now(UTC) + timedelta(days=365)).timestamp()),
         )
 
     if not auth or not auth.credentials:
@@ -223,6 +225,7 @@ def get_current_user(
 
 def require_role(min_role: Role):
     """Factory creating a FastAPI dependency enforcing minimum RBAC permissions."""
+
     def _role_checker(user: Annotated[TokenPayload, Depends(get_current_user)]) -> TokenPayload:
         user_rank = ROLE_HIERARCHY.get(user.role, 0)
         required_rank = ROLE_HIERARCHY.get(min_role, 99)

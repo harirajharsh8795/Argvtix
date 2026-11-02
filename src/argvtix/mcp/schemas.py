@@ -6,18 +6,21 @@ plus typed schemas for tool definitions and results.
 
 Spec reference: https://spec.modelcontextprotocol.io
 """
+
 from __future__ import annotations
 
 from typing import Any, Literal
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # JSON-RPC 2.0 envelope
 # ---------------------------------------------------------------------------
 
+
 class MCPRequest(BaseModel):
     """Incoming JSON-RPC 2.0 request from an MCP client."""
+
     jsonrpc: Literal["2.0"] = "2.0"
     id: str | int | None = None
     method: str
@@ -32,23 +35,25 @@ class MCPError(BaseModel):
 
 class MCPResponse(BaseModel):
     """Outgoing JSON-RPC 2.0 response."""
+
     jsonrpc: Literal["2.0"] = "2.0"
     id: str | int | None = None
     result: dict[str, Any] | None = None
     error: MCPError | None = None
 
     @classmethod
-    def ok(cls, request_id: str | int | None, result: dict[str, Any]) -> "MCPResponse":
+    def ok(cls, request_id: str | int | None, result: dict[str, Any]) -> MCPResponse:
         return cls(id=request_id, result=result)
 
     @classmethod
-    def err(cls, request_id: str | int | None, code: int, message: str) -> "MCPResponse":
+    def err(cls, request_id: str | int | None, code: int, message: str) -> MCPResponse:
         return cls(id=request_id, error=MCPError(code=code, message=message))
 
 
 # ---------------------------------------------------------------------------
 # MCP Tool Definition (what the server advertises to clients)
 # ---------------------------------------------------------------------------
+
 
 class MCPParameterSchema(BaseModel):
     type: str = "string"
@@ -58,6 +63,7 @@ class MCPParameterSchema(BaseModel):
 
 class MCPToolDefinition(BaseModel):
     """Describes one callable tool for the MCP tool-listing endpoint."""
+
     name: str
     description: str
     parameters: dict[str, MCPParameterSchema] = Field(default_factory=dict)
@@ -68,6 +74,7 @@ class MCPToolDefinition(BaseModel):
 # ---------------------------------------------------------------------------
 # Well-known MCP error codes
 # ---------------------------------------------------------------------------
+
 
 class MCPErrorCode:
     PARSE_ERROR = -32700

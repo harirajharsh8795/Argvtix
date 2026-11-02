@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import sys
 import time
+from pathlib import Path
 
 # Ensure root argvtix directory and src are on sys.path
 root_dir = str(Path(__file__).resolve().parent.parent)
@@ -34,7 +34,7 @@ if src_dir not in sys.path:
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from argvtix.cache.manager import CacheManager, InMemoryLRUTTLCache, RedisCache
+from argvtix.cache.manager import InMemoryLRUTTLCache, RedisCache
 from argvtix.guard.engine import ActionGuard, GuardCheckRequest, GuardDecision
 from argvtix.trace.schemas import Severity
 
@@ -42,18 +42,18 @@ from argvtix.trace.schemas import Severity
 def test_cache_operations():
     print("\n[1] Testing Cache Read / Write / Delete Operations...")
     cache = InMemoryLRUTTLCache(maxsize=100)
-    
+
     # Write
     cache.set("test_key_1", {"order_id": "ord_100", "status": "approved"}, ttl_seconds=5)
     # Read
     val = cache.get("test_key_1")
     read_ok = (val is not None) and (val.get("order_id") == "ord_100")
-    
+
     # Delete
     deleted = cache.delete("test_key_1")
     val_after = cache.get("test_key_1")
     del_ok = deleted and (val_after is None)
-    
+
     passed = read_ok and del_ok
     print(f"    Read/Write Verification: {'PASS' if passed else 'FAIL'}")
     return {
@@ -67,16 +67,18 @@ def test_cache_operations():
 def test_ttl_expiration():
     print("\n[2] Testing Active TTL Expiration...")
     cache = InMemoryLRUTTLCache(maxsize=100)
-    
+
     cache.set("short_lived", "active_data", ttl_seconds=1)
     immediate_read = cache.get("short_lived")
-    
+
     print("    Waiting 1.2s for TTL expiration...")
     time.sleep(1.2)
     post_ttl_read = cache.get("short_lived")
-    
+
     passed = (immediate_read == "active_data") and (post_ttl_read is None)
-    print(f"    TTL Expiration Verification: {'PASS' if passed else 'FAIL'} (Post-TTL read: {post_ttl_read})")
+    print(
+        f"    TTL Expiration Verification: {'PASS' if passed else 'FAIL'} (Post-TTL read: {post_ttl_read})"
+    )
     return {
         "test": "ttl_expiration",
         "immediate_read": immediate_read,
@@ -90,27 +92,29 @@ def test_lru_eviction():
     print("\n[3] Testing Bounded LRU Eviction...")
     capacity = 10
     cache = InMemoryLRUTTLCache(maxsize=capacity)
-    
+
     # Insert up to capacity
     for i in range(capacity):
         cache.set(f"item_{i}", f"val_{i}", ttl_seconds=60)
-        
+
     # Access item_0 so it becomes recently used
     cache.get("item_0")
-    
+
     # Insert 5 more items to trigger eviction
     for i in range(capacity, capacity + 5):
         cache.set(f"item_{i}", f"val_{i}", ttl_seconds=60)
-        
+
     stats = cache.get_metrics()
     evictions = stats.get("evictions", 0)
     current_size = stats.get("items_count", 0)
-    
+
     # Item 0 was touched, so it should not be the first evicted
     item_0_present = cache.get("item_0") is not None
-    
+
     passed = (evictions == 5) and (current_size == capacity)
-    print(f"    LRU Eviction Verification: {'PASS' if passed else 'FAIL'} (Evictions: {evictions}, Size: {current_size})")
+    print(
+        f"    LRU Eviction Verification: {'PASS' if passed else 'FAIL'} (Evictions: {evictions}, Size: {current_size})"
+    )
     return {
         "test": "lru_eviction",
         "max_capacity": capacity,
@@ -126,17 +130,24 @@ def test_disconnection_and_fallback():
     fake_redis_url = "redis://127.0.0.1:6399/15"
     fallback_cache = InMemoryLRUTTLCache(maxsize=500)
     redis_backend = RedisCache(redis_url=fake_redis_url, fallback_cache=fallback_cache)
-    
+
     status = redis_backend.get_metrics()
     backend = status.get("backend")
     redis_conn = status.get("redis_connected")
-    
+
     # Test setting and retrieving data through degraded backend
     redis_backend.set("fallback_test", {"degraded": True}, ttl_seconds=60)
     retrieved = redis_backend.get("fallback_test")
-    
-    passed = (backend == "redis_fallback_to_memory") and (redis_conn is False) and (retrieved is not None) and (retrieved.get("degraded") is True)
-    print(f"    Fallback Verification: {'PASS' if passed else 'FAIL'} (Backend: {backend}, Fallback Operational: {retrieved is not None})")
+
+    passed = (
+        (backend == "redis_fallback_to_memory")
+        and (redis_conn is False)
+        and (retrieved is not None)
+        and (retrieved.get("degraded") is True)
+    )
+    print(
+        f"    Fallback Verification: {'PASS' if passed else 'FAIL'} (Backend: {backend}, Fallback Operational: {retrieved is not None})"
+    )
     return {
         "test": "redis_disconnection_fallback",
         "configured_url": fake_redis_url,
@@ -149,14 +160,16 @@ def test_disconnection_and_fallback():
 
 
 def test_security_independence():
-    print("\n[5] Testing Security Independence (Action Guard & Auth NEVER depend on cached safety)...")
-    
+    print(
+        "\n[5] Testing Security Independence (Action Guard & Auth NEVER depend on cached safety)..."
+    )
+
     db_url = os.getenv("DATABASE_URL", "sqlite:///./argvtix.db")
     engine = create_engine(db_url, pool_pre_ping=True)
     Session = sessionmaker(bind=engine)
-    
+
     guard = ActionGuard()
-    
+
     # Negative amount context: must ALWAYS be blocked with HIGH risk
     req_bad = GuardCheckRequest(
         workflow_type="refund",
@@ -166,18 +179,20 @@ def test_security_independence():
         amount=-50.0,
         reason="test negative refund",
     )
-    
+
     with Session() as session:
         # Run evaluation 1
         eval_1 = guard.evaluate(req_bad, db=session)
         # Run evaluation 2 (simulating potential cache window)
         eval_2 = guard.evaluate(req_bad, db=session)
-    
+
     # Invariant: Both evaluations must independently enforce BLOCK
-    independent = (eval_1.decision == GuardDecision.BLOCK) and (eval_2.decision == GuardDecision.BLOCK)
+    independent = (eval_1.decision == GuardDecision.BLOCK) and (
+        eval_2.decision == GuardDecision.BLOCK
+    )
     # Invariant: Reasons and risk levels are identical
     reasons_consistent = eval_1.risk_level == eval_2.risk_level == Severity.HIGH
-    
+
     passed = independent and reasons_consistent
     print(f"    Security Independence Verification: {'PASS' if passed else 'FAIL'}")
     return {
@@ -198,10 +213,11 @@ def main():
 
     redis_url = os.getenv("REDIS_URL")
     live_redis_available = False
-    
+
     if redis_url:
         try:
             import redis
+
             r = redis.from_url(redis_url, socket_connect_timeout=1.0)
             r.ping()
             live_redis_available = True
@@ -226,7 +242,9 @@ def main():
         "environment": "Windows 11 AMD64 (Local Staging Environment)",
         "live_redis_infrastructure": {
             "configured": bool(redis_url),
-            "status": "PASS (Live Redis Verified)" if live_redis_available else "BLOCKED (Host lacks live Redis server on port 6379)",
+            "status": "PASS (Live Redis Verified)"
+            if live_redis_available
+            else "BLOCKED (Host lacks live Redis server on port 6379)",
             "cross_replica_cluster_sync": "BLOCKED (Requires multi-container Docker cluster)",
         },
         "caching_engine_validation": {

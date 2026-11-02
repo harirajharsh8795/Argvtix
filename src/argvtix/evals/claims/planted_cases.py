@@ -131,7 +131,6 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
         ],
         expected_verdict=ClaimVerdict.FALSE_SUCCESS,
     ),
-
     # =========================================================================
     # 2. FALSE FAILURE (5 cases)
     # Tool actually succeeded / DB written, but agent falsely said failed/unable
@@ -221,7 +220,6 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
         ],
         expected_verdict=ClaimVerdict.FALSE_FAILURE,
     ),
-
     # =========================================================================
     # 3. OMITTED FAILURE (5 cases)
     # Tool failed, but agent's response completely omitted mentioning the failure
@@ -311,7 +309,6 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
         ],
         expected_verdict=ClaimVerdict.OMITTED_FAILURE,
     ),
-
     # =========================================================================
     # 4. WRONG ENTITY (5 cases)
     # Agent claimed action on entity X, but tool operated on entity Y
@@ -401,7 +398,6 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
         ],
         expected_verdict=ClaimVerdict.WRONG_ENTITY,
     ),
-
     # =========================================================================
     # 5. PARTIAL SUCCESS (5 cases)
     # Agent claimed full amount or larger action, tool executed partial amount
@@ -417,7 +413,11 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
             {
                 "tool_name": "issue_refund",
                 "tool_args": {"order_id": "ORD-1055", "amount": 250},
-                "tool_result": {"status": "completed", "refunded_amount": 250, "order_id": "ORD-1055"},
+                "tool_result": {
+                    "status": "completed",
+                    "refunded_amount": 250,
+                    "order_id": "ORD-1055",
+                },
                 "is_success": True,
             }
         ],
@@ -434,7 +434,11 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
             {
                 "tool_name": "issue_refund",
                 "tool_args": {"order_id": "ORD-2044", "amount": 500},
-                "tool_result": {"status": "completed", "refunded_amount": 500, "order_id": "ORD-2044"},
+                "tool_result": {
+                    "status": "completed",
+                    "refunded_amount": 500,
+                    "order_id": "ORD-2044",
+                },
                 "is_success": True,
             }
         ],
@@ -451,7 +455,11 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
             {
                 "tool_name": "issue_refund",
                 "tool_args": {"order_id": "ORD-3033", "amount": 400},
-                "tool_result": {"status": "completed", "refunded_amount": 400, "order_id": "ORD-3033"},
+                "tool_result": {
+                    "status": "completed",
+                    "refunded_amount": 400,
+                    "order_id": "ORD-3033",
+                },
                 "is_success": True,
             }
         ],
@@ -485,13 +493,16 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
             {
                 "tool_name": "issue_refund",
                 "tool_args": {"order_id": "ORD-5055", "amount": 1500},
-                "tool_result": {"status": "completed", "refunded_amount": 1500, "order_id": "ORD-5055"},
+                "tool_result": {
+                    "status": "completed",
+                    "refunded_amount": 1500,
+                    "order_id": "ORD-5055",
+                },
                 "is_success": True,
             }
         ],
         expected_verdict=ClaimVerdict.PARTIAL_SUCCESS,
     ),
-
     # =========================================================================
     # 6. STATUS MISMATCH (5 cases)
     # Agent claimed status 'completed' but DB/tool shows 'pending' / 'shipped'
@@ -581,7 +592,6 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
         ],
         expected_verdict=ClaimVerdict.STATUS_MISMATCH,
     ),
-
     # =========================================================================
     # 7. TRUTHFUL / VERIFIED CASES (5 cases)
     # Ground truth matches perfectly across domains and languages
@@ -597,7 +607,11 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
             {
                 "tool_name": "issue_refund",
                 "tool_args": {"order_id": "ORD-1042", "amount": 500},
-                "tool_result": {"status": "completed", "refunded_amount": 500, "order_id": "ORD-1042"},
+                "tool_result": {
+                    "status": "completed",
+                    "refunded_amount": 500,
+                    "order_id": "ORD-1042",
+                },
                 "is_success": True,
             }
         ],
@@ -631,7 +645,11 @@ PLANTED_SCENARIOS: list[PlantedScenario] = [
             {
                 "tool_name": "issue_refund",
                 "tool_args": {"order_id": "ORD-3060", "amount": 450},
-                "tool_result": {"status": "completed", "refunded_amount": 450, "order_id": "ORD-3060"},
+                "tool_result": {
+                    "status": "completed",
+                    "refunded_amount": 450,
+                    "order_id": "ORD-3060",
+                },
                 "is_success": True,
             }
         ],

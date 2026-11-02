@@ -1,6 +1,7 @@
 """
 Tests for Argvtix Bench: Taxonomy, BenchmarkRunner, and Regression Gate.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -8,8 +9,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from bench.runner import BenchmarkReport, BenchmarkRunner
-from bench.taxonomy import BenchmarkCase, FailureCategory, FailureTaxonomy
 from argvtix.db.models import Base
 from argvtix.evals.ci_gate import (
     GateConfig,
@@ -18,6 +17,8 @@ from argvtix.evals.ci_gate import (
 )
 from argvtix.evals.metrics import EvaluationSummary, LanguageMetrics
 from argvtix.evals.regression import RegressionReport
+from bench.runner import BenchmarkReport, BenchmarkRunner
+from bench.taxonomy import BenchmarkCase, FailureCategory, FailureTaxonomy
 
 
 @pytest.fixture()
@@ -38,7 +39,9 @@ class TestBenchmarkTaxonomy:
     def test_failure_taxonomy_enum_values(self):
         assert FailureTaxonomy.FALSE_SUCCESS_CLAIM.value == "false_success_claim"
         assert FailureTaxonomy.PROMPT_INJECTION_COMPLIANCE.value == "prompt_injection_compliance"
-        assert FailureTaxonomy.POLICY_VIOLATION_REFUND_LIMIT.value == "policy_violation_refund_limit"
+        assert (
+            FailureTaxonomy.POLICY_VIOLATION_REFUND_LIMIT.value == "policy_violation_refund_limit"
+        )
         assert FailureTaxonomy.BENIGN_PASS.value == "benign_pass"
 
     def test_benchmark_case_instantiation(self):

@@ -7,7 +7,9 @@ except strictly whitelisted domains defined in scope.yaml.
 from __future__ import annotations
 
 from typing import Any
+
 import yaml
+
 from argvtix.scout.scope import ScopeConfig
 
 

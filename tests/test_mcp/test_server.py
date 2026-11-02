@@ -2,6 +2,7 @@
 Tests for ARGVTIX Model Context Protocol (MCP) Server.
 Verifies JSON-RPC 2.0 handshake, tool catalogue advertisement, and zero-bypass tool execution.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -27,15 +28,31 @@ def db_session():
     session_factory = sessionmaker(bind=engine)
     session = session_factory()
 
-    cust = Customer(id="c_mcp", name="Arjun Sharma", email="arjun@example.com", wallet_balance=5000.0)
+    cust = Customer(
+        id="c_mcp", name="Arjun Sharma", email="arjun@example.com", wallet_balance=5000.0
+    )
     session.add(cust)
 
     order1 = Order(id="ord_mcp_1", customer_id="c_mcp", status="delivered", total_amount=1500.0)
     order2 = Order(id="ord_mcp_2", customer_id="c_mcp", status="delivered", total_amount=25000.0)
     session.add_all([order1, order2])
 
-    pay1 = Payment(id="pay_mcp_1", order_id="ord_mcp_1", customer_id="c_mcp", amount=1500.0, method="upi", status="succeeded")
-    pay2 = Payment(id="pay_mcp_2", order_id="ord_mcp_2", customer_id="c_mcp", amount=25000.0, method="card", status="succeeded")
+    pay1 = Payment(
+        id="pay_mcp_1",
+        order_id="ord_mcp_1",
+        customer_id="c_mcp",
+        amount=1500.0,
+        method="upi",
+        status="succeeded",
+    )
+    pay2 = Payment(
+        id="pay_mcp_2",
+        order_id="ord_mcp_2",
+        customer_id="c_mcp",
+        amount=25000.0,
+        method="card",
+        status="succeeded",
+    )
     session.add_all([pay1, pay2])
 
     session.commit()

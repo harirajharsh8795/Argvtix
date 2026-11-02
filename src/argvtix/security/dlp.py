@@ -7,6 +7,7 @@ Prevents:
 2. System prompt and internal instruction leakage.
 3. Raw error tracebacks and database connection string leaks.
 """
+
 from __future__ import annotations
 
 import re
@@ -18,6 +19,7 @@ from argvtix.security.pii import PIIMasker
 @dataclass
 class DLPViolation:
     """Details of a detected DLP violation."""
+
     rule_name: str
     severity: str  # 'low' | 'medium' | 'high' | 'critical'
     description: str
@@ -27,6 +29,7 @@ class DLPViolation:
 @dataclass
 class DLPCheckResult:
     """Result of an outbound response DLP audit."""
+
     is_safe: bool
     violations: list[DLPViolation] = field(default_factory=list)
     sanitized_text: str = ""
@@ -66,8 +69,7 @@ class DLPFilter:
     def __init__(self, pii_masker: PIIMasker | None = None) -> None:
         self.pii_masker = pii_masker or PIIMasker()
         self._compiled_leaks = [
-            (name, sev, re.compile(pat), desc)
-            for name, sev, pat, desc in self.SYSTEM_LEAK_PATTERNS
+            (name, sev, re.compile(pat), desc) for name, sev, pat, desc in self.SYSTEM_LEAK_PATTERNS
         ]
 
     def inspect(self, response_text: str) -> DLPCheckResult:

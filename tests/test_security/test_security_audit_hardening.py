@@ -10,11 +10,11 @@ Verifies:
 7. Rate Limiter Configuration and Error Handling
 8. Health Check Data Leakage Prevention
 """
+
 from __future__ import annotations
 
-import os
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from argvtix.db.session import init_db
 from argvtix.gateway.app import app
@@ -22,7 +22,6 @@ from argvtix.security.auth import (
     Role,
     create_access_token,
     get_jwt_secret_key,
-    verify_credentials,
 )
 
 
@@ -152,7 +151,11 @@ class TestAuthenticationEndpointHardening:
 
         res = client.post(
             "/api/v1/auth/token",
-            json={"username": "secops_admin", "password": "SuperSecureAdminSecret2026!#", "role": "admin"},
+            json={
+                "username": "secops_admin",
+                "password": "SuperSecureAdminSecret2026!#",
+                "role": "admin",
+            },
         )
         assert res.status_code == 200
         data = res.json()
@@ -161,7 +164,9 @@ class TestAuthenticationEndpointHardening:
 
 
 class TestRBACNegativeEnforcement:
-    def test_anonymous_blocked_from_gateway_call_when_auth_enabled(self, client: TestClient, monkeypatch):
+    def test_anonymous_blocked_from_gateway_call_when_auth_enabled(
+        self, client: TestClient, monkeypatch
+    ):
         """Verify unauthenticated callers cannot invoke ToolGateway when ARGVTIX_AUTH_ENABLED=true."""
         monkeypatch.setenv("ARGVTIX_AUTH_ENABLED", "true")
 

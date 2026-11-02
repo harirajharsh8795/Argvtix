@@ -9,15 +9,16 @@ Blocks PR merge (exits with code 1) if:
 - Cost per 100 requests exceeds maximum increase
 - Hindi/Hinglish language accuracy drops below language-specific thresholds
 """
+
 from __future__ import annotations
 
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import TextIO
 
+import yaml
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-import yaml
 
 from argvtix.evals.regression import RegressionEngine, RegressionReport
 from argvtix.replay.golden import load_golden_cases
@@ -97,7 +98,10 @@ def evaluate_regression_gate(
 
     if enforce_absolute is None:
         # Auto-detect: only enforce absolute floors if baseline itself met them
-        enforce_absolute = report.baseline_summary.overall_accuracy >= config.overall_accuracy.min_absolute_accuracy
+        enforce_absolute = (
+            report.baseline_summary.overall_accuracy
+            >= config.overall_accuracy.min_absolute_accuracy
+        )
 
     failures: list[str] = []
 
@@ -107,7 +111,11 @@ def evaluate_regression_gate(
             f"Overall accuracy drop {report.accuracy_delta:+.2f}% exceeds max allowed "
             f"-{config.overall_accuracy.max_drop_percent:.2f}%"
         )
-    if enforce_absolute and report.candidate_summary.overall_accuracy < config.overall_accuracy.min_absolute_accuracy:
+    if (
+        enforce_absolute
+        and report.candidate_summary.overall_accuracy
+        < config.overall_accuracy.min_absolute_accuracy
+    ):
         failures.append(
             f"Candidate overall accuracy {report.candidate_summary.overall_accuracy:.2f}% is below min required "
             f"{config.overall_accuracy.min_absolute_accuracy:.2f}%"
@@ -120,7 +128,10 @@ def evaluate_regression_gate(
             f"Guard alignment dropped by {guard_drop:.2f}%, violating zero-regression policy "
             f"(max drop {config.guard_alignment.max_drop_percent:.2f}%)"
         )
-    if enforce_absolute and report.candidate_summary.guard_alignment < config.guard_alignment.min_guard_alignment:
+    if (
+        enforce_absolute
+        and report.candidate_summary.guard_alignment < config.guard_alignment.min_guard_alignment
+    ):
         failures.append(
             f"Candidate guard alignment {report.candidate_summary.guard_alignment:.2f}% is below required "
             f"{config.guard_alignment.min_guard_alignment:.2f}%"
@@ -210,7 +221,9 @@ def run_ci_gate(
         max_allowed_drop_percent=config.overall_accuracy.max_drop_percent,
     )
 
-    passed, failure_reasons = evaluate_regression_gate(report, config, enforce_absolute=enforce_absolute)
+    passed, failure_reasons = evaluate_regression_gate(
+        report, config, enforce_absolute=enforce_absolute
+    )
 
     out.write("\n")
     out.write("  ===============================================================\n")
@@ -220,7 +233,9 @@ def run_ci_gate(
     out.write(f"  Candidate Accuracy  : {report.candidate_summary.overall_accuracy:.1f}%\n")
     out.write(f"  Accuracy Delta      : {report.accuracy_delta:+.1f}%\n")
     out.write(f"  Guard Alignment     : {report.candidate_summary.guard_alignment:.1f}%\n")
-    out.write(f"  P95 Latency         : {report.candidate_summary.p95_latency_ms:.1f} ms ({report.p95_latency_delta_ms:+.1f} ms)\n")
+    out.write(
+        f"  P95 Latency         : {report.candidate_summary.p95_latency_ms:.1f} ms ({report.p95_latency_delta_ms:+.1f} ms)\n"
+    )
     out.write(f"  Cost / 100 req      : ${report.candidate_summary.cost_per_100_usd:.4f}\n")
     out.write(f"  Regressions Count   : {len(report.what_got_worse)}\n")
     out.write(f"  Improvements Count  : {len(report.what_got_better)}\n")
@@ -241,7 +256,9 @@ def run_ci_gate(
         out.write("  ===============================================================\n\n")
         return 1
 
-    out.write("  [PASS] CI GATE PASSED: Release candidate meets all enterprise reliability thresholds!\n")
+    out.write(
+        "  [PASS] CI GATE PASSED: Release candidate meets all enterprise reliability thresholds!\n"
+    )
     out.write("     Safe to proceed with deployment / PR merge.\n")
     out.write("  ===============================================================\n\n")
     return 0

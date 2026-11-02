@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
 import functools
 import inspect
 import time
-from typing import Any, Callable, Optional
 import uuid
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from argvtix_sdk.client import ArgvtixClient
 
 # In-memory buffer for recorded traces during offline runs or local verification
 local_trace_buffer: list[dict[str, Any]] = []
-_default_client: Optional[ArgvtixClient] = None
+_default_client: ArgvtixClient | None = None
 
 
 def set_default_client(client: ArgvtixClient) -> None:
@@ -23,14 +24,14 @@ def set_default_client(client: ArgvtixClient) -> None:
     _default_client = client
 
 
-def get_default_client() -> Optional[ArgvtixClient]:
+def get_default_client() -> ArgvtixClient | None:
     return _default_client
 
 
 def trace(
     workflow: str = "agent_execution",
     step_type: str = "tool",
-    client: Optional[ArgvtixClient] = None,
+    client: ArgvtixClient | None = None,
     record_args: bool = True,
     record_result: bool = True,
 ) -> Callable:
@@ -38,6 +39,7 @@ def trace(
 
     Supports both synchronous and asynchronous functions.
     """
+
     def decorator(fn: Callable) -> Callable:
         fn_name = fn.__name__
 
@@ -47,7 +49,7 @@ def trace(
             trace_id = f"TRC-{uuid.uuid4().hex[:12]}"
             step_id = f"STP-{uuid.uuid4().hex[:8]}"
 
-            start_utc = datetime.now(timezone.utc)
+            start_utc = datetime.now(UTC)
             start_mono = time.monotonic()
 
             inputs_data = {}
@@ -105,7 +107,7 @@ def trace(
             trace_id = f"TRC-{uuid.uuid4().hex[:12]}"
             step_id = f"STP-{uuid.uuid4().hex[:8]}"
 
-            start_utc = datetime.now(timezone.utc)
+            start_utc = datetime.now(UTC)
             start_mono = time.monotonic()
 
             inputs_data = {}

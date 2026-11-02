@@ -6,9 +6,11 @@ Defines:
 - JudgeVerdict: Output of judge evaluation with dimensional scoring and injection checks
 - JudgeCalibrationResult: Cohen's Kappa agreement metric vs human gold standard
 """
+
 from __future__ import annotations
 
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -29,6 +31,7 @@ class JudgeRubric(BaseModel):
 
 class JudgeVerdict(BaseModel):
     """Result of an LLM Judge evaluation for a candidate response."""
+
     case_id: str = Field(default="")
     overall_score: float = Field(..., ge=0.0, le=10.0)
     passed: bool = Field(...)
@@ -41,6 +44,7 @@ class JudgeVerdict(BaseModel):
 
 class CalibrationCase(BaseModel):
     """Human-labelled case used for inter-rater agreement calibration."""
+
     id: str
     domain: str
     language: str
@@ -55,6 +59,7 @@ class CalibrationCase(BaseModel):
 
 class JudgeCalibrationResult(BaseModel):
     """Inter-rater reliability report between automated Judge and human labels."""
+
     total_cases: int
     cohens_kappa: float
     raw_agreement_percentage: float

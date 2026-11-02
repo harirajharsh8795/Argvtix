@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 from argvtix.scout.probes.base import ProbeCategory, ProbeSeverity, ScoutProbe
 from argvtix.scout.probes.catalog import SCOUT_PROBE_CATALOG
 
@@ -10,10 +9,12 @@ from argvtix.scout.probes.catalog import SCOUT_PROBE_CATALOG
 class ProbeRegistry:
     """Registry allowing filtering and retrieval of audit probes."""
 
-    def __init__(self, probes: Optional[list[ScoutProbe]] = None):
-        self._probes: dict[str, ScoutProbe] = {p.probe_id: p for p in (probes or SCOUT_PROBE_CATALOG)}
+    def __init__(self, probes: list[ScoutProbe] | None = None):
+        self._probes: dict[str, ScoutProbe] = {
+            p.probe_id: p for p in (probes or SCOUT_PROBE_CATALOG)
+        }
 
-    def get_probe(self, probe_id: str) -> Optional[ScoutProbe]:
+    def get_probe(self, probe_id: str) -> ScoutProbe | None:
         return self._probes.get(probe_id)
 
     def list_all(self) -> list[ScoutProbe]:
@@ -21,9 +22,9 @@ class ProbeRegistry:
 
     def filter(
         self,
-        category: Optional[ProbeCategory] = None,
-        severity: Optional[ProbeSeverity] = None,
-        search_query: Optional[str] = None,
+        category: ProbeCategory | None = None,
+        severity: ProbeSeverity | None = None,
+        search_query: str | None = None,
     ) -> list[ScoutProbe]:
         results = list(self._probes.values())
         if category:
@@ -33,7 +34,8 @@ class ProbeRegistry:
         if search_query:
             q = search_query.lower()
             results = [
-                p for p in results
+                p
+                for p in results
                 if q in p.name.lower() or q in p.description.lower() or q in p.probe_id.lower()
             ]
         return results

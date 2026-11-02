@@ -1,6 +1,7 @@
 """
 Model Adapters Module.
 """
+
 from __future__ import annotations
 
 from argvtix.target_app.adapters.base import LLMAdapter

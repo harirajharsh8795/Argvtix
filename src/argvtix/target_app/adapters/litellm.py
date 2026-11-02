@@ -1,6 +1,7 @@
 """
 LiteLLM Universal Fallback Adapter (MISSING-02).
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,6 +32,7 @@ class LiteLLMAdapter(LLMAdapter):
 
         try:
             import litellm
+
             response = litellm.completion(
                 model=self.model_name,
                 messages=[{"role": "user", "content": prompt}],
@@ -39,5 +41,8 @@ class LiteLLMAdapter(LLMAdapter):
             )
             return response.choices[0].message.content or ""
         except Exception as e:
-            logger.info("[LITELLM_ADAPTER] LiteLLM call delegated or unconfigured (%s). Using fallback mock.", e)
+            logger.info(
+                "[LITELLM_ADAPTER] LiteLLM call delegated or unconfigured (%s). Using fallback mock.",
+                e,
+            )
             return self._fallback_mock.call(prompt)

@@ -1,6 +1,7 @@
 """
 Test Suite for Week 5: Evaluation Metrics, Regression Engine, and CI Gate.
 """
+
 from __future__ import annotations
 
 import io
@@ -44,7 +45,9 @@ def db():
     o1 = Order(id="1", customer_id="1", status="delivered", total_amount=1200.0)
     session.add(o1)
 
-    pay1 = Payment(id="1", order_id="1", customer_id="1", amount=1200.0, method="upi", status="succeeded")
+    pay1 = Payment(
+        id="1", order_id="1", customer_id="1", amount=1200.0, method="upi", status="succeeded"
+    )
     session.add(pay1)
     session.commit()
 
@@ -67,19 +70,24 @@ class FlawedCandidateLLM:
         if "intent classifier" in p or "classify the following" in p:
             ticket_part = p.split("customer ticket:")[-1] if "customer ticket:" in p else p
             # If regression is active, break any Hinglish/Hindi tickets
-            if self.break_hinglish and any(k in ticket_part for k in ("karo", "chahiye", "mera", "batao")):
-                return json.dumps({
-                    "intent": "unknown",
-                    "order_id": None,
-                    "amount": None,
-                    "confidence": 0.2,
-                })
+            if self.break_hinglish and any(
+                k in ticket_part for k in ("karo", "chahiye", "mera", "batao")
+            ):
+                return json.dumps(
+                    {
+                        "intent": "unknown",
+                        "order_id": None,
+                        "amount": None,
+                        "confidence": 0.2,
+                    }
+                )
         return self._base.call(prompt)
 
 
 # ---------------------------------------------------------------------------
 # Metrics Unit Tests
 # ---------------------------------------------------------------------------
+
 
 class TestMetrics:
     def test_language_detection(self):
@@ -151,6 +159,7 @@ class TestMetrics:
 # Regression Engine Tests
 # ---------------------------------------------------------------------------
 
+
 class TestRegressionEngine:
     def test_identical_configs_have_zero_delta(self, db):
         cases = [
@@ -197,6 +206,7 @@ class TestRegressionEngine:
 # ---------------------------------------------------------------------------
 # CI Evaluation Gate Tests
 # ---------------------------------------------------------------------------
+
 
 class TestCIEvaluationGate:
     def test_ci_gate_passes_on_healthy_candidate(self, db):

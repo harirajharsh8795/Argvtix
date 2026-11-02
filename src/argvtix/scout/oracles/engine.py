@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 from argvtix.scout.oracles.base import OracleLevel, OracleVerdict
 from argvtix.scout.oracles.L1_deterministic import L1DeterministicOracle
 from argvtix.scout.oracles.L2_ground_truth import L2GroundTruthOracle
@@ -49,7 +48,7 @@ class OracleEngine:
         user_input: str,
         response_text: str,
         probe: ScoutProbe,
-        current_turn: Optional[ProbeTurn],
+        current_turn: ProbeTurn | None,
         conversation_history: list[dict[str, str]],
     ) -> CompositeOracleVerdict:
         verdicts: dict[str, OracleVerdict] = {}

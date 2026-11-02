@@ -219,7 +219,9 @@ def test_evals_run_endpoint(client: TestClient) -> None:
 
 
 def test_evals_regression_endpoint(client: TestClient) -> None:
-    res = client.post("/api/v1/evals/regression", json={"workflow": "balance", "max_drop_allowed": 10.0})
+    res = client.post(
+        "/api/v1/evals/regression", json={"workflow": "balance", "max_drop_allowed": 10.0}
+    )
     assert res.status_code == 200
     data = res.json()
     assert data["verdict"] in ("PASSED", "FAILED_REGRESSION")
@@ -234,7 +236,11 @@ def test_evals_verify_claims_endpoint(client: TestClient) -> None:
             {
                 "tool_name": "issue_refund",
                 "tool_args": {"order_id": "ORD-1042", "amount": 500},
-                "tool_result": {"status": "completed", "refunded_amount": 500, "order_id": "ORD-1042"},
+                "tool_result": {
+                    "status": "completed",
+                    "refunded_amount": 500,
+                    "order_id": "ORD-1042",
+                },
                 "is_success": True,
             }
         ],
@@ -287,7 +293,11 @@ def test_gateway_call_blocked_tool(client: TestClient) -> None:
         "/api/v1/guard/gateway/call",
         json={
             "tool_name": "issue_refund",
-            "params": {"order_id": "ord_nonexistent_99", "customer_id": "cust_api_1", "amount": 500.0},
+            "params": {
+                "order_id": "ord_nonexistent_99",
+                "customer_id": "cust_api_1",
+                "amount": 500.0,
+            },
         },
     )
     assert res.status_code == 200
@@ -442,6 +452,3 @@ def test_contact_submission_validation_error(client: TestClient) -> None:
     }
     res = client.post("/api/v1/contact", json=payload)
     assert res.status_code == 422
-
-
-

@@ -56,7 +56,9 @@ class ClaimVerifier:
             # Detect error in result or explicit flag
             if not is_success:
                 error_msg = str(res) if res else "Tool execution failed"
-            elif isinstance(res, dict) and ("error" in res or res.get("status") in {"error", "failed"}):
+            elif isinstance(res, dict) and (
+                "error" in res or res.get("status") in {"error", "failed"}
+            ):
                 is_success = False
                 error_msg = str(res.get("error") or res.get("message") or "Tool returned error")
 
@@ -155,7 +157,17 @@ class ClaimVerifier:
                 not c.is_success_claimed for c in extracted_claims
             ) or any(
                 w in agent_response.lower()
-                for w in ["fail", "error", "unable", "sorry", "nahi ho", "problem", "cannot", "issue", "could not"]
+                for w in [
+                    "fail",
+                    "error",
+                    "unable",
+                    "sorry",
+                    "nahi ho",
+                    "problem",
+                    "cannot",
+                    "issue",
+                    "could not",
+                ]
             )
 
             if not agent_acknowledged_failure:
@@ -289,7 +301,9 @@ class ClaimVerifier:
 
         # 2. Check for FALSE_SUCCESS:
         # Tool errored / no write, but agent claimed success
-        tool_errored = matching_snap.tool_status in {"error", "failed"} or matching_snap.rows_affected == 0
+        tool_errored = (
+            matching_snap.tool_status in {"error", "failed"} or matching_snap.rows_affected == 0
+        )
         if tool_errored and claim.is_success_claimed:
             return ClaimVerificationResult(
                 claim_id=claim.claim_id,
@@ -352,7 +366,14 @@ class ClaimVerifier:
 
             status_conflicts = {
                 "completed": {"pending", "initiated", "under_review", "queued", "failed"},
-                "cancelled": {"active", "processing", "shipped", "pending", "pending_review", "initiated"},
+                "cancelled": {
+                    "active",
+                    "processing",
+                    "shipped",
+                    "pending",
+                    "pending_review",
+                    "initiated",
+                },
                 "delivered": {"shipped", "in_transit", "pending", "processing"},
                 "failed": {"completed", "success"},
             }

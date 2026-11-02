@@ -7,9 +7,10 @@ Defines the 4 canonical reconciliation failure modes across ERP, CRM, and agent 
 3. MISSING_INVENTORY_DEDUCTION: Order placed/delivered but inventory count not decremented
 4. STATUS_DESYNC: ERP status (e.g. shipped) != Agent DB status (e.g. cancelled)
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -25,6 +26,7 @@ class ReconciliationFailureType(str, Enum):
 
 class ExternalEntityState(BaseModel):
     """External state representation from CRM, ERP, or payment gateway."""
+
     order_id: str
     crm_invoice_amount: float | None = None
     erp_order_status: str | None = None
@@ -36,6 +38,7 @@ class ExternalEntityState(BaseModel):
 
 class ReconciliationItem(BaseModel):
     """A detected discrepancy between internal state and external ERP/CRM."""
+
     failure_type: ReconciliationFailureType
     entity_id: str
     entity_type: str  # "order" | "payment" | "inventory"
@@ -43,13 +46,14 @@ class ReconciliationItem(BaseModel):
     actual_value: Any
     discrepancy_details: str
     severity: str = "critical"  # "critical" | "warning" | "info"
-    detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    detected_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ReconciliationResult(BaseModel):
     """Consolidated reconciliation audit report."""
+
     total_entities_checked: int
     total_discrepancies: int
     items: list[ReconciliationItem] = Field(default_factory=list)
     is_synchronized: bool = True
-    audit_timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    audit_timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))

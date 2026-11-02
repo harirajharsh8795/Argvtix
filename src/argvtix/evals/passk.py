@@ -12,7 +12,8 @@ Implements rigorous multi-trial reliability evaluation for non-deterministic AI 
 from __future__ import annotations
 
 import math
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -180,7 +181,9 @@ class PassKRunner:
         total_cases = len(cases)
 
         # 1. pass@1 = average single run accuracy
-        pass_at_1 = (total_successes_all / total_trials_all * 100.0) if total_trials_all > 0 else 0.0
+        pass_at_1 = (
+            (total_successes_all / total_trials_all * 100.0) if total_trials_all > 0 else 0.0
+        )
 
         # 2. pass@k = proportion where at least 1 attempt succeeded
         pass_at_k = (at_least_one_pass_count / total_cases * 100.0) if total_cases > 0 else 0.0
@@ -193,7 +196,9 @@ class PassKRunner:
 
         # 5. Composite reliability index:
         # Heavily rewards pass^k and penalizes flakiness
-        reliability_index = max(0.0, min(100.0, (pass_hat_k * 0.8) + (pass_at_1 * 0.2) - (flake_rate * 0.5)))
+        reliability_index = max(
+            0.0, min(100.0, (pass_hat_k * 0.8) + (pass_at_1 * 0.2) - (flake_rate * 0.5))
+        )
 
         return PassKReport(
             k=eval_k,

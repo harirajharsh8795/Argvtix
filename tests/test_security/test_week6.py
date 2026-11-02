@@ -1,6 +1,7 @@
 """
 Test Suite for Week 6: PII Masking, DLP Outbound Filter, and Watchdog Ledger/Orphan Rules.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -43,12 +44,30 @@ def db():
     o1 = Order(id="ord_w6_1", customer_id="cust_w6_1", status="completed", total_amount=1200.0)
     session.add(o1)
 
-    p1 = Payment(id="pmt_w6_1", order_id="ord_w6_1", customer_id="cust_w6_1", amount=1200.0, status="succeeded")
+    p1 = Payment(
+        id="pmt_w6_1",
+        order_id="ord_w6_1",
+        customer_id="cust_w6_1",
+        amount=1200.0,
+        status="succeeded",
+    )
     session.add(p1)
 
     # Valid ledger entries matching wallet balance (credits 1000 - debits 500 = 500)
-    l1 = LedgerEntry(id="led_1", customer_id="cust_w6_1", entry_type="credit", amount=1000.0, description="Gift voucher")
-    l2 = LedgerEntry(id="led_2", customer_id="cust_w6_1", entry_type="debit", amount=500.0, description="Order payment deduction")
+    l1 = LedgerEntry(
+        id="led_1",
+        customer_id="cust_w6_1",
+        entry_type="credit",
+        amount=1000.0,
+        description="Gift voucher",
+    )
+    l2 = LedgerEntry(
+        id="led_2",
+        customer_id="cust_w6_1",
+        entry_type="debit",
+        amount=500.0,
+        description="Order payment deduction",
+    )
     session.add_all([l1, l2])
 
     session.commit()
@@ -64,6 +83,7 @@ def client():
 # ---------------------------------------------------------------------------
 # 1. PII Masking Unit Tests
 # ---------------------------------------------------------------------------
+
 
 class TestPIIMasker:
     def test_aadhaar_masking(self):
@@ -117,6 +137,7 @@ class TestPIIMasker:
 # 2. DLP Outbound Filter Tests
 # ---------------------------------------------------------------------------
 
+
 class TestDLPFilter:
     def test_clean_response_passes(self):
         dlp = DLPFilter()
@@ -135,7 +156,9 @@ class TestDLPFilter:
 
     def test_system_prompt_leak_redacted(self):
         dlp = DLPFilter()
-        leaky_text = "You are an AI assistant and internal prompt says do not give refunds over 10000"
+        leaky_text = (
+            "You are an AI assistant and internal prompt says do not give refunds over 10000"
+        )
         res = dlp.inspect(leaky_text)
         assert res.is_safe is False
         assert res.has_critical is True
@@ -143,7 +166,9 @@ class TestDLPFilter:
 
     def test_raw_stacktrace_redacted(self):
         dlp = DLPFilter()
-        traceback_text = "Internal error: Traceback (most recent call last):\n  File 'app.py', line 12 in run"
+        traceback_text = (
+            "Internal error: Traceback (most recent call last):\n  File 'app.py', line 12 in run"
+        )
         res = dlp.inspect(traceback_text)
         assert res.is_safe is False
         assert "[REDACTED_SYSTEM_CONTENT]" in res.sanitized_text
@@ -152,6 +177,7 @@ class TestDLPFilter:
 # ---------------------------------------------------------------------------
 # 3. Agent End-to-End PII Sanitization
 # ---------------------------------------------------------------------------
+
 
 class TestAgentPIIIntegration:
     def test_agent_masks_inbound_ticket_in_trace(self, db):
@@ -173,6 +199,7 @@ class TestAgentPIIIntegration:
 # ---------------------------------------------------------------------------
 # 4. Watchdog Rules 5 & 6 Tests
 # ---------------------------------------------------------------------------
+
 
 class TestWatchdogNewRules:
     def test_ledger_balance_clean_pass(self, db):
@@ -214,6 +241,7 @@ class TestWatchdogNewRules:
 # ---------------------------------------------------------------------------
 # 5. Gateway Security Endpoints Tests
 # ---------------------------------------------------------------------------
+
 
 class TestGatewaySecurityEndpoints:
     def test_gateway_mask_endpoint(self, client):

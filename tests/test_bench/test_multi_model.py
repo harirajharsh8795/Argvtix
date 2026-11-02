@@ -2,10 +2,10 @@
 Tests for Multi-Model Benchmark Module (src/argvtix/evals/benchmarks).
 Verifies model adapters, multi-model parallel evaluation, winner determination, and reporting.
 """
+
 from __future__ import annotations
 
 import json
-import pytest
 
 from argvtix.evals.benchmarks.adapters import MockAdapter, ModelResponse
 from argvtix.evals.benchmarks.report import BenchmarkReport

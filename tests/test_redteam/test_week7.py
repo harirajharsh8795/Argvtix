@@ -1,6 +1,7 @@
 """
 Test Suite for Week 7: Policy Conflict Detector, Red Team 40-Attack Suite, and RAG Citations/Refusal.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -59,6 +60,7 @@ def client():
 # ---------------------------------------------------------------------------
 # 1. Policy Conflict Detector Tests
 # ---------------------------------------------------------------------------
+
 
 class TestPolicyConflictDetector:
     def test_extract_clauses_from_text(self):
@@ -145,6 +147,7 @@ class TestPolicyConflictDetector:
 # 2. Policy Conflict 60-Pair Benchmark Tests
 # ---------------------------------------------------------------------------
 
+
 class TestPolicyConflictBenchmark:
     def test_benchmark_has_60_ground_truth_pairs(self):
         cases = build_conflict_benchmark_dataset()
@@ -165,6 +168,7 @@ class TestPolicyConflictBenchmark:
 # ---------------------------------------------------------------------------
 # 3. Adversarial Red Team 40-Attack Tests
 # ---------------------------------------------------------------------------
+
 
 class TestRedTeamAdversarialSuite:
     def test_load_all_40_attacks(self):
@@ -194,12 +198,16 @@ class TestRedTeamAdversarialSuite:
         # Check category breakdown
         for cat in AttackCategory:
             assert cat.value in scorecard.category_breakdown
-            assert scorecard.category_breakdown[cat.value].protected_blocked == scorecard.category_breakdown[cat.value].total
+            assert (
+                scorecard.category_breakdown[cat.value].protected_blocked
+                == scorecard.category_breakdown[cat.value].total
+            )
 
 
 # ---------------------------------------------------------------------------
 # 4. RAG Citations & Refusal Tests
 # ---------------------------------------------------------------------------
+
 
 class TestRAGCitationsAndRefusal:
     def test_relevant_query_has_citations(self):
@@ -220,6 +228,7 @@ class TestRAGCitationsAndRefusal:
 # ---------------------------------------------------------------------------
 # 5. Gateway Week 7 Endpoints Tests
 # ---------------------------------------------------------------------------
+
 
 class TestGatewayWeek7Endpoints:
     def test_conflicts_scan_endpoint(self, client):

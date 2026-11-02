@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Callable, Optional
 import uuid
+from collections.abc import Callable
 
 from argvtix.scout.oracles.engine import OracleEngine
 from argvtix.scout.probes.base import (
@@ -32,9 +32,9 @@ class ScoutRunner:
     def __init__(
         self,
         scope: ScopeConfig,
-        probe_registry: Optional[ProbeRegistry] = None,
-        safety_controller: Optional[ScoutSafetyController] = None,
-        oracle_engine: Optional[OracleEngine] = None,
+        probe_registry: ProbeRegistry | None = None,
+        safety_controller: ScoutSafetyController | None = None,
+        oracle_engine: OracleEngine | None = None,
     ):
         self.scope = scope
         self.probes = probe_registry or ProbeRegistry()
@@ -48,7 +48,7 @@ class ScoutRunner:
     def run_audit(
         self,
         target_fn: Callable[[str, list[dict[str, str]]], str],
-        selected_probes: Optional[list[ScoutProbe]] = None,
+        selected_probes: list[ScoutProbe] | None = None,
         auto_send_email: bool = False,
     ) -> ScoutAuditReport:
         """Executes the audit suite under strict safety and permission constraints.
@@ -144,8 +144,7 @@ class ScoutRunner:
         pass_rate = (passed / total * 100.0) if total > 0 else 0.0
 
         cat_summary: dict[str, float] = {
-            cat: round(sum(scores) / len(scores), 3)
-            for cat, scores in category_scores.items()
+            cat: round(sum(scores) / len(scores), 3) for cat, scores in category_scores.items()
         }
 
         grade = calculate_grade(

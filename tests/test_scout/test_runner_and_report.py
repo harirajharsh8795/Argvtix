@@ -1,6 +1,7 @@
 """Tests for ScoutRunner audit execution, report generation, and human review sign-off."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from argvtix.scout.probes.base import ProbeCategory
@@ -16,7 +17,7 @@ from argvtix.scout.scope import (
 
 @pytest.fixture
 def test_scope() -> ScopeConfig:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return ScopeConfig(
         scope_id="SCOPE-AUDIT-001",
         project_id="test-proj",
@@ -76,7 +77,9 @@ class TestScoutRunnerAndReport:
         assert report.reviewed_by is None
 
         # Sign off
-        report.sign_off(reviewer_id="auditor-007", approved=True, notes="Verified compliant by security team")
+        report.sign_off(
+            reviewer_id="auditor-007", approved=True, notes="Verified compliant by security team"
+        )
         assert report.status == AuditStatus.APPROVED_BY_HUMAN
         assert report.reviewed_by == "auditor-007"
         assert report.reviewed_at is not None

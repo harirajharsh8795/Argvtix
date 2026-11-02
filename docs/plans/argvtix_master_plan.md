@@ -326,51 +326,57 @@ Day 8–9 — Sprint D1: Scout Black-Box Agent
 ```python
 # src/argvtix/evals/claims/schemas.py
 
+
 class ClaimType(str, Enum):
-    ACTION = "action"       # "I issued a refund of ₹1,200"
-    FACT = "fact"           # "Your order was placed on 15 Jan"
-    POLICY = "policy"       # "Refunds are processed within 5 days"
-    STATUS = "status"       # "Your ticket is now resolved"
+    ACTION = "action"  # "I issued a refund of ₹1,200"
+    FACT = "fact"  # "Your order was placed on 15 Jan"
+    POLICY = "policy"  # "Refunds are processed within 5 days"
+    STATUS = "status"  # "Your ticket is now resolved"
+
 
 class ClaimVerdict(str, Enum):
-    SUPPORTED = "SUPPORTED"         # DB confirms the claim
+    SUPPORTED = "SUPPORTED"  # DB confirms the claim
     CONTRADICTED = "CONTRADICTED"  # DB contradicts the claim
-    UNSUPPORTED = "UNSUPPORTED"    # DB has no evidence either way
+    UNSUPPORTED = "UNSUPPORTED"  # DB has no evidence either way
     UNVERIFIABLE = "UNVERIFIABLE"  # Cannot check programmatically
+
 
 class Claim(BaseModel):
     claim_id: str
     claim_type: ClaimType
-    subject_entity: str          # "refund", "order", "ticket"
-    subject_id: str | None       # Extracted entity ID
-    asserted_value: str          # What the agent claimed
-    span_text: str               # Exact text from agent response
+    subject_entity: str  # "refund", "order", "ticket"
+    subject_id: str | None  # Extracted entity ID
+    asserted_value: str  # What the agent claimed
+    span_text: str  # Exact text from agent response
     span_start: int
     span_end: int
 
+
 class EvidenceBundle(BaseModel):
-    db_before: dict              # DB state snapshot BEFORE agent action
-    db_after: dict               # DB state snapshot AFTER agent action
-    policy_text: str | None      # Matching policy clause if applicable
+    db_before: dict  # DB state snapshot BEFORE agent action
+    db_after: dict  # DB state snapshot AFTER agent action
+    policy_text: str | None  # Matching policy clause if applicable
+
 
 class VerificationResult(BaseModel):
     claim: Claim
     verdict: ClaimVerdict
     evidence: EvidenceBundle
     explanation: str
-    confidence: float            # 0.0 - 1.0
+    confidence: float  # 0.0 - 1.0
 ```
 
 ```python
 # src/argvtix/evals/claims/verifier.py
 
+
 class ClaimVerifier:
     def snapshot_before(self, db: Session, entity_type: str, entity_id: str) -> dict:
         """Capture DB state before agent action."""
-        
+
     def snapshot_after(self, db: Session, entity_type: str, entity_id: str) -> dict:
         """Capture DB state after agent action."""
-        
+
     def verify(
         self,
         claim: Claim,
@@ -394,15 +400,17 @@ class ClaimVerifier:
 ```python
 # src/argvtix/evals/passk.py
 
+
 @dataclass
 class PassKResult:
     case_id: str
     k: int
-    pass_at_1: bool         # Did the first trial pass?
-    pass_k: bool            # Did ALL k trials pass?
-    pass_count: int         # How many of k trials passed?
-    flake_rate: float       # % of trials that flipped result
+    pass_at_1: bool  # Did the first trial pass?
+    pass_k: bool  # Did ALL k trials pass?
+    pass_count: int  # How many of k trials passed?
+    flake_rate: float  # % of trials that flipped result
     trial_results: list[bool]
+
 
 class PassKRunner:
     def run(
@@ -421,34 +429,36 @@ class PassKRunner:
 ```python
 # src/argvtix/watchdog/anomaly.py
 
+
 class AnomalyMethod(str, Enum):
-    Z_SCORE = "z_score"     # (current - mean) / std > 2.5
-    IQR = "iqr"             # current > Q3 + 1.5 * IQR
+    Z_SCORE = "z_score"  # (current - mean) / std > 2.5
+    IQR = "iqr"  # current > Q3 + 1.5 * IQR
+
 
 @dataclass
 class AnomalyAlert:
-    metric: str             # "daily_refund_count", "daily_refund_amount", "error_rate"
+    metric: str  # "daily_refund_count", "daily_refund_amount", "error_rate"
     current_value: float
     baseline_mean: float
     baseline_std: float
     z_score: float
     method: AnomalyMethod
-    severity: str           # "low", "medium", "high", "critical"
-    window_days: int        # Sliding window used
+    severity: str  # "low", "medium", "high", "critical"
+    window_days: int  # Sliding window used
+
 
 class AnomalyDetector:
-    def __init__(self, window_days: int = 30, z_threshold: float = 2.5):
-        ...
-    
+    def __init__(self, window_days: int = 30, z_threshold: float = 2.5): ...
+
     def compute_refund_anomalies(self, db: Session) -> list[AnomalyAlert]:
         """Check if today's refund volume is statistically abnormal."""
-    
+
     def compute_latency_anomalies(self, db: Session) -> list[AnomalyAlert]:
         """Check if today's avg latency is abnormally high."""
-    
+
     def compute_error_rate_anomalies(self, db: Session) -> list[AnomalyAlert]:
         """Check if today's error rate is statistically elevated."""
-    
+
     def full_report(self, db: Session) -> dict:
         """Run all anomaly checks and return consolidated report."""
 ```

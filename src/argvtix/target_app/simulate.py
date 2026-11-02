@@ -7,6 +7,7 @@ Usage:
     python -m argvtix.target_app.simulate --scenario all
     python -m argvtix.target_app.simulate --scenario refund_blocked
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,6 +21,7 @@ from argvtix.target_app.llm import MockLLM
 # ---------------------------------------------------------------------------
 # Pre-built simulation scenarios
 # ---------------------------------------------------------------------------
+
 
 class Scenario(NamedTuple):
     name: str
@@ -72,6 +74,7 @@ SCENARIOS: list[Scenario] = [
 # Pretty printer
 # ---------------------------------------------------------------------------
 
+
 def _divider(char: str = "-", width: int = 60) -> str:
     return char * width
 
@@ -109,6 +112,7 @@ def print_trace_detail(result) -> None:
 # Main entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="ShopOps AI Agent Simulator",
@@ -130,7 +134,9 @@ def main() -> None:
         help="Pre-built scenario to run (default: all)",
     )
     parser.add_argument("--trace", action="store_true", help="Print full trace step detail")
-    parser.add_argument("--mock", action="store_true", default=True, help="Use MockLLM (default, no API key needed)")
+    parser.add_argument(
+        "--mock", action="store_true", default=True, help="Use MockLLM (default, no API key needed)"
+    )
     args = parser.parse_args()
 
     init_db()

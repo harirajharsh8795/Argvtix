@@ -1,6 +1,7 @@
 """
 Abstract Base LLM Adapter (MISSING-02).
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

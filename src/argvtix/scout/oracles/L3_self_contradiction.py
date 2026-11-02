@@ -18,9 +18,7 @@ class L3SelfContradictionOracle:
 
         # Extract assistant responses in order
         assistant_turns = [
-            turn["content"]
-            for turn in conversation_history
-            if turn.get("role") == "assistant"
+            turn["content"] for turn in conversation_history if turn.get("role") == "assistant"
         ]
 
         if len(assistant_turns) < 2:
@@ -37,8 +35,18 @@ class L3SelfContradictionOracle:
         t1 = assistant_turns[0].lower()
         t_last = assistant_turns[-1].lower()
 
-        t1_has_order = any(w in t1 for w in ["order is", "shipped", "delivered", "in transit", "placed on"])
-        t_last_no_order = any(w in t_last for w in ["no such order", "order does not exist", "cannot find order", "not found in system"])
+        t1_has_order = any(
+            w in t1 for w in ["order is", "shipped", "delivered", "in transit", "placed on"]
+        )
+        t_last_no_order = any(
+            w in t_last
+            for w in [
+                "no such order",
+                "order does not exist",
+                "cannot find order",
+                "not found in system",
+            ]
+        )
 
         if t1_has_order and t_last_no_order:
             violations.append(
@@ -48,7 +56,8 @@ class L3SelfContradictionOracle:
         # Check return eligibility flip
         t1_electronics_returnable = "7 days" in t1 or "7-day" in t1 or "returnable" in t1
         t_last_milk_returnable = ("milk" in t_last or "dairy" in t_last) and any(
-            phrase in t_last for phrase in ["can be returned", "return within 7 days", "eligible for return"]
+            phrase in t_last
+            for phrase in ["can be returned", "return within 7 days", "eligible for return"]
         )
         if t1_electronics_returnable and t_last_milk_returnable and "milk" in t_last:
             violations.append(

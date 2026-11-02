@@ -7,6 +7,7 @@ Usage:
     python -m argvtix.replay.runner --case gold_ref_001
     python -m argvtix.replay.runner --workflow refund
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,10 +26,18 @@ def _divider(char: str = "-", width: int = 65) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="ARGVTIX Replay & Benchmark CLI")
     parser.add_argument("--trace", help="Trace ID to replay from database")
-    parser.add_argument("--suite", action="store_true", help="Run full 50-case golden benchmark suite")
+    parser.add_argument(
+        "--suite", action="store_true", help="Run full 50-case golden benchmark suite"
+    )
     parser.add_argument("--case", help="Specific golden case ID to run (e.g. gold_ref_001)")
-    parser.add_argument("--workflow", choices=["refund", "cancel", "balance", "inventory", "subscription", "general"], help="Filter golden cases by workflow")
-    parser.add_argument("--mock", action="store_true", default=True, help="Use deterministic MockLLM (default)")
+    parser.add_argument(
+        "--workflow",
+        choices=["refund", "cancel", "balance", "inventory", "subscription", "general"],
+        help="Filter golden cases by workflow",
+    )
+    parser.add_argument(
+        "--mock", action="store_true", default=True, help="Use deterministic MockLLM (default)"
+    )
     args = parser.parse_args()
 
     init_db()
@@ -51,7 +60,9 @@ def main() -> None:
                 print(f"  REPLAYED STATUS : {comp.replayed_status.upper()}")
                 print(f"  ORIGINAL GUARD  : {comp.original_guard_decision.upper()}")
                 print(f"  REPLAYED GUARD  : {comp.replayed_guard_decision.upper()}")
-                print(f"  GUARD MATCH     : {'YES' if comp.guard_decisions_match else 'NO (DRIFT DETECTED)'}")
+                print(
+                    f"  GUARD MATCH     : {'YES' if comp.guard_decisions_match else 'NO (DRIFT DETECTED)'}"
+                )
                 print(f"  LATENCY DELTA   : {comp.latency_delta_ms:+.1f} ms")
                 print(f"  TOKENS DELTA    : {comp.tokens_delta:+d} tokens")
                 print(_divider("="))
@@ -68,8 +79,12 @@ def main() -> None:
             res = engine.replay_case(case)
             print(_divider("="))
             print(f"  TICKET    : {res.ticket_text}")
-            print(f"  INTENT    : {res.actual_intent} (Expected: {res.expected_intent}) -> {'MATCH' if res.intent_match else 'MISMATCH'}")
-            print(f"  GUARD     : {res.actual_guard.upper()} (Expected: {res.expected_guard.upper()}) -> {'MATCH' if res.guard_match else 'MISMATCH'}")
+            print(
+                f"  INTENT    : {res.actual_intent} (Expected: {res.expected_intent}) -> {'MATCH' if res.intent_match else 'MISMATCH'}"
+            )
+            print(
+                f"  GUARD     : {res.actual_guard.upper()} (Expected: {res.expected_guard.upper()}) -> {'MATCH' if res.guard_match else 'MISMATCH'}"
+            )
             print(f"  VERDICT   : {'PASSED' if res.is_passed else 'FAILED'}")
             print(f"  LATENCY   : {res.latency_ms:.1f} ms")
             if res.failure_reasons:
@@ -79,20 +94,28 @@ def main() -> None:
             print(_divider("="))
 
         elif args.suite or args.workflow:
-            cases = filter_golden_cases(workflow=args.workflow) if args.workflow else load_golden_cases()
+            cases = (
+                filter_golden_cases(workflow=args.workflow)
+                if args.workflow
+                else load_golden_cases()
+            )
             total_count = len(cases)
             wf_label = f"[{args.workflow.upper()}]" if args.workflow else "[ALL WORKFLOWS]"
             print(f"\n  Running {total_count} Golden Benchmark Cases {wf_label}...\n")
             bench = engine.run_suite(cases=cases)
 
-            print(f"  {'Case ID':<14} | {'Workflow':<10} | {'Intent':<7} | {'Guard':<7} | {'Result':<6} | {'Latency':<8}")
+            print(
+                f"  {'Case ID':<14} | {'Workflow':<10} | {'Intent':<7} | {'Guard':<7} | {'Result':<6} | {'Latency':<8}"
+            )
             print(_divider("-"))
             for r in bench.case_results:
                 int_str = "OK" if r.intent_match else "FAIL"
                 grd_str = "OK" if r.guard_match else "FAIL"
                 res_str = "PASS" if r.is_passed else "FAIL"
                 lat_str = f"{r.latency_ms:.0f}ms"
-                print(f"  {r.case_id:<14} | {r.workflow:<10} | {int_str:<7} | {grd_str:<7} | {res_str:<6} | {lat_str:<8}")
+                print(
+                    f"  {r.case_id:<14} | {r.workflow:<10} | {int_str:<7} | {grd_str:<7} | {res_str:<6} | {lat_str:<8}"
+                )
 
             print(_divider("="))
             print(f"  TOTAL CASES     : {bench.total_cases}")

@@ -10,6 +10,7 @@ Identifies:
 - 'What got better': Cases that failed in Baseline but pass in Candidate (IMPROVEMENTS).
 - Metric deltas: Accuracy delta, latency delta, token delta, language drop.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -26,10 +27,11 @@ from argvtix.target_app.llm import LLMProtocol
 @dataclass
 class RegressionItem:
     """A specific case where candidate performed worse than baseline."""
+
     case_id: str
     workflow: str
     ticket_text: str
-    baseline_result: str   # 'PASS'
+    baseline_result: str  # 'PASS'
     candidate_result: str  # 'FAIL'
     failure_reasons: list[str]
 
@@ -37,16 +39,18 @@ class RegressionItem:
 @dataclass
 class ImprovementItem:
     """A specific case where candidate performed better than baseline."""
+
     case_id: str
     workflow: str
     ticket_text: str
-    baseline_result: str   # 'FAIL'
+    baseline_result: str  # 'FAIL'
     candidate_result: str  # 'PASS'
 
 
 @dataclass
 class RegressionReport:
     """Comprehensive comparison between baseline and candidate configurations."""
+
     baseline_version: str
     candidate_version: str
     baseline_summary: EvaluationSummary
@@ -62,7 +66,9 @@ class RegressionReport:
 
     @property
     def cost_delta_usd(self) -> float:
-        return round(self.candidate_summary.total_cost_usd - self.baseline_summary.total_cost_usd, 5)
+        return round(
+            self.candidate_summary.total_cost_usd - self.baseline_summary.total_cost_usd, 5
+        )
 
 
 class RegressionEngine:
@@ -87,18 +93,20 @@ class RegressionEngine:
             res = replayer.replay_case(c, llm=llm)
             case_map[c.id] = res
 
-            eval_items.append({
-                "workflow": c.workflow,
-                "ticket_text": c.ticket_text,
-                "expected_intent": c.expected_intent,
-                "actual_intent": res.actual_intent,
-                "expected_guard": c.expected_guard_decision,
-                "actual_guard": res.actual_guard,
-                "expected_tool": c.expected_tool,
-                "actual_tool": res.actual_intent if res.is_passed else None,
-                "latency_ms": res.latency_ms,
-                "cost_usd": 0.0001,
-            })
+            eval_items.append(
+                {
+                    "workflow": c.workflow,
+                    "ticket_text": c.ticket_text,
+                    "expected_intent": c.expected_intent,
+                    "actual_intent": res.actual_intent,
+                    "expected_guard": c.expected_guard_decision,
+                    "actual_guard": res.actual_guard,
+                    "expected_tool": c.expected_tool,
+                    "actual_tool": res.actual_intent if res.is_passed else None,
+                    "latency_ms": res.latency_ms,
+                    "cost_usd": 0.0001,
+                }
+            )
 
         summary = compute_evaluation_summary(eval_items)
         return summary, case_map
@@ -132,24 +140,28 @@ class RegressionEngine:
 
             # Case passed in baseline, but failed in candidate -> REGRESSION
             if b_res.is_passed and not c_res.is_passed:
-                what_got_worse.append(RegressionItem(
-                    case_id=c.id,
-                    workflow=c.workflow,
-                    ticket_text=c.ticket_text,
-                    baseline_result="PASS",
-                    candidate_result="FAIL",
-                    failure_reasons=c_res.failure_reasons,
-                ))
+                what_got_worse.append(
+                    RegressionItem(
+                        case_id=c.id,
+                        workflow=c.workflow,
+                        ticket_text=c.ticket_text,
+                        baseline_result="PASS",
+                        candidate_result="FAIL",
+                        failure_reasons=c_res.failure_reasons,
+                    )
+                )
 
             # Case failed in baseline, but passed in candidate -> IMPROVEMENT
             elif not b_res.is_passed and c_res.is_passed:
-                what_got_better.append(ImprovementItem(
-                    case_id=c.id,
-                    workflow=c.workflow,
-                    ticket_text=c.ticket_text,
-                    baseline_result="FAIL",
-                    candidate_result="PASS",
-                ))
+                what_got_better.append(
+                    ImprovementItem(
+                        case_id=c.id,
+                        workflow=c.workflow,
+                        ticket_text=c.ticket_text,
+                        baseline_result="FAIL",
+                        candidate_result="PASS",
+                    )
+                )
 
         acc_delta = round(cand_summary.overall_accuracy - base_summary.overall_accuracy, 1)
         int_delta = round(cand_summary.intent_accuracy - base_summary.intent_accuracy, 1)

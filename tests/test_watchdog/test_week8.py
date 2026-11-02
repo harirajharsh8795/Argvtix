@@ -5,6 +5,7 @@ Test Suite for Week 8 / Sprint A4:
 - Multi-Channel Alerting Pipeline (In-memory, Slack/Email stubs)
 - LLM Token Spend Guard (Daily & Monthly budget caps)
 """
+
 from __future__ import annotations
 
 import pytest
@@ -46,10 +47,25 @@ def db():
 
     # Seed baseline customer, product, order, payment
     cust = Customer(id="cust_w8_1", name="Vikram Roy", email="vikram@example.com")
-    prod = Product(id="prod_w8_1", sku="SKU-W8-1", title="Echo Dot", price=3499.0, inventory_count=10)
+    prod = Product(
+        id="prod_w8_1", sku="SKU-W8-1", title="Echo Dot", price=3499.0, inventory_count=10
+    )
     order = Order(id="ord_w8_1", customer_id="cust_w8_1", status="delivered", total_amount=3499.0)
-    item = OrderItem(id="item_w8_1", order_id="ord_w8_1", product_id="prod_w8_1", quantity=1, unit_price=3499.0, line_total=3499.0)
-    payment = Payment(id="pay_w8_1", order_id="ord_w8_1", customer_id="cust_w8_1", amount=3499.0, status="succeeded")
+    item = OrderItem(
+        id="item_w8_1",
+        order_id="ord_w8_1",
+        product_id="prod_w8_1",
+        quantity=1,
+        unit_price=3499.0,
+        line_total=3499.0,
+    )
+    payment = Payment(
+        id="pay_w8_1",
+        order_id="ord_w8_1",
+        customer_id="cust_w8_1",
+        amount=3499.0,
+        status="succeeded",
+    )
 
     session.add_all([cust, prod, order, item, payment])
     session.commit()
@@ -76,10 +92,7 @@ class TestAnomalyDetection:
     def test_normal_time_series_has_zero_anomalies(self):
         detector = AnomalyDetector(min_history_size=5)
         # Consistent baseline
-        series = [
-            MetricDataPoint(metric_name="refund_rate", value=2.0)
-            for _ in range(10)
-        ]
+        series = [MetricDataPoint(metric_name="refund_rate", value=2.0) for _ in range(10)]
         report = detector.analyze_series(series)
         assert report.anomalies_detected == 0
         assert report.is_anomalous is False
@@ -165,7 +178,9 @@ class TestReconciliationEngine:
             )
         ]
         result = engine.run_reconciliation(external_states=external)
-        assert any(it.failure_type == ReconciliationFailureType.STATUS_DESYNC for it in result.items)
+        assert any(
+            it.failure_type == ReconciliationFailureType.STATUS_DESYNC for it in result.items
+        )
 
     def test_orphan_payment_detected(self, db):
         # Insert orphan payment with non-existent order_id
@@ -182,7 +197,8 @@ class TestReconciliationEngine:
         engine = ReconciliationEngine(db=db)
         result = engine.run_reconciliation()
         assert any(
-            it.failure_type == ReconciliationFailureType.ORPHAN_PAYMENT and it.entity_id == "pay_orphan_99"
+            it.failure_type == ReconciliationFailureType.ORPHAN_PAYMENT
+            and it.entity_id == "pay_orphan_99"
             for it in result.items
         )
 

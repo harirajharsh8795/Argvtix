@@ -1,6 +1,7 @@
 """
 Google Gemini LLM Adapter (MISSING-02).
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,16 +35,21 @@ class GeminiAdapter(LLMAdapter):
             return "Apologies, operation spend limit reached. Please contact system administrator."
 
         if not self.api_key:
-            logger.info("[GEMINI_ADAPTER] GEMINI_API_KEY not found in environment. Gracefully delegating to MockAdapter.")
+            logger.info(
+                "[GEMINI_ADAPTER] GEMINI_API_KEY not found in environment. Gracefully delegating to MockAdapter."
+            )
             return self._fallback_mock.call(prompt)
 
         try:
             # If google-genai or google.generativeai is installed
             import google.generativeai as genai
+
             genai.configure(api_key=self.api_key)
             model = genai.GenerativeModel(self.model_name)
             response = model.generate_content(prompt)
             return response.text or ""
         except Exception as e:
-            logger.warning("[GEMINI_ADAPTER_ERROR] Direct Gemini call failed (%s). Falling back to mock.", e)
+            logger.warning(
+                "[GEMINI_ADAPTER_ERROR] Direct Gemini call failed (%s). Falling back to mock.", e
+            )
             return self._fallback_mock.call(prompt)

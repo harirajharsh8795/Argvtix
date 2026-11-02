@@ -106,7 +106,9 @@ def seed_benchmark_data(
 
     for i in range(num_orders):
         cust = rng.choice(customers)
-        status = rng.choice(["completed", "completed", "completed", "pending", "cancelled", "refunded"])
+        status = rng.choice(
+            ["completed", "completed", "completed", "pending", "cancelled", "refunded"]
+        )
         subtotal = 0.0
         order_id = f"ord_bench_{i}"
 
@@ -266,7 +268,9 @@ def seed_benchmark_data(
             WatchdogFindingRecord(
                 id=f"find_bench_{f_idx}",
                 project_id="default",
-                rule_name=rng.choice(["duplicate_refund", "order_total_mismatch", "ledger_balance_mismatch"]),
+                rule_name=rng.choice(
+                    ["duplicate_refund", "order_total_mismatch", "ledger_balance_mismatch"]
+                ),
                 severity=rng.choice(["critical", "high", "medium", "low"]),
                 description=f"Benchmark finding {f_idx}",
                 entity_type=rng.choice(["order", "customer"]),
@@ -315,22 +319,16 @@ def run_benchmark_suite(db_engine, iterations: int = 5) -> dict[str, Any]:
     for _ in range(iterations):
         with QueryCounter(db_engine) as qc:
             t0 = time.perf_counter()
-            row = (
-                session.query(
-                    func.count(TraceRecord.id).label("total_traces"),
-                    func.sum(
-                        case((TraceRecord.status == "completed", 1), else_=0)
-                    ).label("successful"),
-                    func.avg(TraceRecord.total_latency_ms).label("avg_latency"),
-                    func.sum(TraceRecord.total_cost_usd).label("total_cost"),
-                    func.sum(TraceRecord.total_tokens).label("total_tokens"),
-                )
-                .first()
-            )
+            row = session.query(
+                func.count(TraceRecord.id).label("total_traces"),
+                func.sum(case((TraceRecord.status == "completed", 1), else_=0)).label("successful"),
+                func.avg(TraceRecord.total_latency_ms).label("avg_latency"),
+                func.sum(TraceRecord.total_cost_usd).label("total_cost"),
+                func.sum(TraceRecord.total_tokens).label("total_tokens"),
+            ).first()
             t1 = time.perf_counter()
             stats_latencies.append((t1 - t0) * 1000.0)
             stats_query_counts.append(qc.count)
-
 
     metrics["trace_stats"] = {
         "avg_latency_ms": round(sum(stats_latencies) / len(stats_latencies), 2),

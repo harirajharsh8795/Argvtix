@@ -2,6 +2,7 @@
 
 import time
 from pathlib import Path
+
 import pytest
 
 from argvtix.scout.safety import (
@@ -75,7 +76,9 @@ class TestScoutSafety:
             controller.check_safety_preflight()
 
     def test_max_turns_and_conversations_limits(self):
-        controller = ScoutSafetyController(max_rpm=60, max_turns_per_conversation=3, max_conversations=2)
+        controller = ScoutSafetyController(
+            max_rpm=60, max_turns_per_conversation=3, max_conversations=2
+        )
 
         # 3 turns ok, turn 4 blocked
         controller.check_safety_preflight(current_conversation_turns=2)

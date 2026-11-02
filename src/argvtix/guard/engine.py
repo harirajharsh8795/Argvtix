@@ -5,6 +5,7 @@ Decides whether an action should be ALLOWed, BLOCKed, or sent for human approval
 """
 
 from datetime import UTC, datetime, timedelta
+
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -90,9 +91,7 @@ class ActionGuard:
             cutoff_utc = datetime.now(UTC) - timedelta(minutes=60)
             cutoff_naive = (datetime.now(UTC) - timedelta(minutes=60)).replace(tzinfo=None)
             recent_refunds = (
-                db.query(Refund)
-                .filter(Refund.customer_id == request.customer_id)
-                .all()
+                db.query(Refund).filter(Refund.customer_id == request.customer_id).all()
             )
             recent_count = 0
             for r in recent_refunds:

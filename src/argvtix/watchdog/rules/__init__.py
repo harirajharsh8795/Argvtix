@@ -1,6 +1,7 @@
 """
 Silent Data Corruption Watchdog Rules
 """
+
 from argvtix.watchdog.rules.base import BaseWatchdogRule, WatchdogFinding
 from argvtix.watchdog.rules.duplicate_refund import DuplicateRefundRule
 from argvtix.watchdog.rules.inventory_discrepancy import InventoryDiscrepancyRule

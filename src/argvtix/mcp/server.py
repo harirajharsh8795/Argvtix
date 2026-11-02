@@ -20,6 +20,7 @@ Usage (stdio — Claude Desktop):
 Usage (HTTP — web clients):
     python -m argvtix.mcp.server --transport http --port 8765
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,7 +31,6 @@ from typing import Any
 from argvtix.db.session import SessionLocal, init_db
 from argvtix.guard.gateway import GatewayResult, ToolGateway
 from argvtix.mcp.schemas import (
-    MCPError,
     MCPErrorCode,
     MCPParameterSchema,
     MCPRequest,
@@ -38,7 +38,6 @@ from argvtix.mcp.schemas import (
     MCPToolDefinition,
 )
 from argvtix.trace.schemas import GuardDecision
-
 
 # ---------------------------------------------------------------------------
 # Tool catalogue (synced to ToolGateway registered tools)
@@ -58,7 +57,9 @@ _TOOL_CATALOGUE: list[MCPToolDefinition] = [
         name="get_customer_balance",
         description="Read customer wallet balance.",
         parameters={
-            "customer_id": MCPParameterSchema(type="string", description="Customer ID", required=True),
+            "customer_id": MCPParameterSchema(
+                type="string", description="Customer ID", required=True
+            ),
         },
         is_write=False,
         requires_guard=False,
@@ -76,10 +77,14 @@ _TOOL_CATALOGUE: list[MCPToolDefinition] = [
         name="issue_refund",
         description="Issue a refund for an order. Requires ActionGuard approval for large amounts.",
         parameters={
-            "order_id":    MCPParameterSchema(type="string", description="Order ID",    required=True),
-            "customer_id": MCPParameterSchema(type="string", description="Customer ID", required=True),
-            "amount":      MCPParameterSchema(type="number", description="Refund amount in INR", required=True),
-            "reason":      MCPParameterSchema(type="string", description="Refund reason"),
+            "order_id": MCPParameterSchema(type="string", description="Order ID", required=True),
+            "customer_id": MCPParameterSchema(
+                type="string", description="Customer ID", required=True
+            ),
+            "amount": MCPParameterSchema(
+                type="number", description="Refund amount in INR", required=True
+            ),
+            "reason": MCPParameterSchema(type="string", description="Refund reason"),
         },
         is_write=True,
         requires_guard=True,
@@ -88,9 +93,11 @@ _TOOL_CATALOGUE: list[MCPToolDefinition] = [
         name="cancel_order",
         description="Cancel an order. Requires ActionGuard approval.",
         parameters={
-            "order_id":    MCPParameterSchema(type="string", description="Order ID",    required=True),
-            "customer_id": MCPParameterSchema(type="string", description="Customer ID", required=True),
-            "reason":      MCPParameterSchema(type="string", description="Cancel reason"),
+            "order_id": MCPParameterSchema(type="string", description="Order ID", required=True),
+            "customer_id": MCPParameterSchema(
+                type="string", description="Customer ID", required=True
+            ),
+            "reason": MCPParameterSchema(type="string", description="Cancel reason"),
         },
         is_write=True,
         requires_guard=True,
@@ -103,6 +110,7 @@ _TOOL_BY_NAME: dict[str, MCPToolDefinition] = {t.name: t for t in _TOOL_CATALOGU
 # ---------------------------------------------------------------------------
 # MCP Server core
 # ---------------------------------------------------------------------------
+
 
 class MCPServer:
     """
@@ -166,16 +174,19 @@ class MCPServer:
     # ------------------------------------------------------------------
 
     def _handle_initialize(self, req: MCPRequest) -> MCPResponse:
-        return MCPResponse.ok(req.id, {
-            "protocolVersion": self.PROTOCOL_VERSION,
-            "serverInfo": {
-                "name": self.SERVER_NAME,
-                "version": self.SERVER_VERSION,
+        return MCPResponse.ok(
+            req.id,
+            {
+                "protocolVersion": self.PROTOCOL_VERSION,
+                "serverInfo": {
+                    "name": self.SERVER_NAME,
+                    "version": self.SERVER_VERSION,
+                },
+                "capabilities": {
+                    "tools": {"listChanged": False},
+                },
             },
-            "capabilities": {
-                "tools": {"listChanged": False},
-            },
-        })
+        )
 
     def _handle_tools_list(self, req: MCPRequest) -> MCPResponse:
         tools_payload = []
@@ -188,15 +199,17 @@ class MCPServer:
                 },
                 "required": [k for k, v in tool.parameters.items() if v.required],
             }
-            tools_payload.append({
-                "name": tool.name,
-                "description": tool.description,
-                "inputSchema": input_schema,
-                "annotations": {
-                    "isWrite": tool.is_write,
-                    "requiresGuard": tool.requires_guard,
-                },
-            })
+            tools_payload.append(
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "inputSchema": input_schema,
+                    "annotations": {
+                        "isWrite": tool.is_write,
+                        "requiresGuard": tool.requires_guard,
+                    },
+                }
+            )
         return MCPResponse.ok(req.id, {"tools": tools_payload})
 
     def _handle_tools_call(self, req: MCPRequest) -> MCPResponse:
@@ -223,9 +236,7 @@ class MCPServer:
 
         return self._gateway_result_to_mcp(req.id, result)
 
-    def _gateway_result_to_mcp(
-        self, request_id: Any, result: GatewayResult
-    ) -> MCPResponse:
+    def _gateway_result_to_mcp(self, request_id: Any, result: GatewayResult) -> MCPResponse:
         """Map GatewayResult -> MCP response."""
         if result.decision == GuardDecision.BLOCK:
             return MCPResponse.err(
@@ -235,21 +246,24 @@ class MCPServer:
             )
 
         if result.decision == GuardDecision.ASK_HUMAN:
-            return MCPResponse.ok(request_id, {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": (
-                            f"Action queued for human review.\n"
-                            f"Approval ID: {result.approval_id}\n"
-                            f"Reason: {result.error}"
-                        ),
-                    }
-                ],
-                "isError": False,
-                "pendingApproval": True,
-                "approvalId": result.approval_id,
-            })
+            return MCPResponse.ok(
+                request_id,
+                {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                f"Action queued for human review.\n"
+                                f"Approval ID: {result.approval_id}\n"
+                                f"Reason: {result.error}"
+                            ),
+                        }
+                    ],
+                    "isError": False,
+                    "pendingApproval": True,
+                    "approvalId": result.approval_id,
+                },
+            )
 
         # ALLOW
         if not result.success:
@@ -259,20 +273,24 @@ class MCPServer:
                 result.error or "Tool execution failed.",
             )
 
-        return MCPResponse.ok(request_id, {
-            "content": [
-                {
-                    "type": "text",
-                    "text": json.dumps(result.data, indent=2, default=str),
-                }
-            ],
-            "isError": False,
-        })
+        return MCPResponse.ok(
+            request_id,
+            {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(result.data, indent=2, default=str),
+                    }
+                ],
+                "isError": False,
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
 # Stdio transport (Claude Desktop / Cursor)
 # ---------------------------------------------------------------------------
+
 
 class StdioTransport:
     """
@@ -303,6 +321,7 @@ class StdioTransport:
 # ---------------------------------------------------------------------------
 # HTTP/SSE transport (FastAPI)
 # ---------------------------------------------------------------------------
+
 
 def create_http_app(server: MCPServer):  # type: ignore[return]
     """Return a FastAPI app exposing the MCP server over HTTP."""
@@ -341,6 +360,7 @@ def create_http_app(server: MCPServer):  # type: ignore[return]
 # ---------------------------------------------------------------------------
 # CLI entrypoint
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Argvtix Tool Gateway MCP Server")

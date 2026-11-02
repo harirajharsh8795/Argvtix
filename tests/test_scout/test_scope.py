@@ -1,6 +1,7 @@
 """Tests for Argvtix Scout permission, scope, and signature verification."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from argvtix.scout.scope import (
@@ -20,7 +21,7 @@ from argvtix.scout.scope import (
 
 @pytest.fixture
 def valid_sandbox_scope() -> ScopeConfig:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return ScopeConfig(
         scope_id="SCOPE-TEST-001",
         project_id="test-proj",
@@ -41,24 +42,28 @@ class TestScopeVerification:
         validate_scope_allows_request(valid_sandbox_scope, "http://localhost:8000/api/chat")
 
     def test_expired_scope_raises_error(self, valid_sandbox_scope: ScopeConfig):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         valid_sandbox_scope.valid_until = now - timedelta(minutes=5)
         with pytest.raises(ScopeExpiredError, match="is not active"):
             validate_scope_allows_request(valid_sandbox_scope, "http://localhost:8000/api/chat")
 
     def test_future_scope_not_yet_active(self, valid_sandbox_scope: ScopeConfig):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         valid_sandbox_scope.valid_from = now + timedelta(hours=2)
         with pytest.raises(ScopeExpiredError, match="is not active"):
             validate_scope_allows_request(valid_sandbox_scope, "http://localhost:8000/api/chat")
 
     def test_unauthorized_host_raises_error(self, valid_sandbox_scope: ScopeConfig):
         with pytest.raises(TargetHostNotAllowedError, match="not in allowed_hosts"):
-            validate_scope_allows_request(valid_sandbox_scope, "http://malicious-external-target.com/api/chat")
+            validate_scope_allows_request(
+                valid_sandbox_scope, "http://malicious-external-target.com/api/chat"
+            )
 
     def test_unauthorized_path_raises_error(self, valid_sandbox_scope: ScopeConfig):
         with pytest.raises(TargetPathNotAllowedError, match="allowed_paths"):
-            validate_scope_allows_request(valid_sandbox_scope, "http://localhost:8000/admin/secrets")
+            validate_scope_allows_request(
+                valid_sandbox_scope, "http://localhost:8000/admin/secrets"
+            )
 
     def test_client_tier_requires_written_auth_and_email(self, valid_sandbox_scope: ScopeConfig):
         valid_sandbox_scope.target_tier = TargetTier.T2_CLIENT_PRODUCTION
@@ -87,7 +92,9 @@ class TestScopeVerification:
         valid_sandbox_scope.target_url = "http://localhost:8000/tampered"
         assert verify_scope_signature(valid_sandbox_scope, secret) is False
 
-    def test_load_scope_from_yaml_with_signature_enforcement(self, valid_sandbox_scope: ScopeConfig):
+    def test_load_scope_from_yaml_with_signature_enforcement(
+        self, valid_sandbox_scope: ScopeConfig
+    ):
         secret = "argvtix-secret-key"
         valid_sandbox_scope.signature = compute_scope_signature(valid_sandbox_scope, secret)
         raw_dict = valid_sandbox_scope.model_dump()

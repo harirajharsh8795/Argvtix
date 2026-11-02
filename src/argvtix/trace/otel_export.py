@@ -12,11 +12,11 @@ Adheres to:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from argvtix.trace.schemas import StepType, Trace, TraceStep
 
@@ -36,12 +36,12 @@ def _to_w3c_span_id(source_id: str, step_index: int = 0) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
-def _to_unix_nano(dt: Optional[datetime]) -> int:
+def _to_unix_nano(dt: datetime | None) -> int:
     """Converts a datetime into Unix epoch nanoseconds for OTel timestamps."""
     if dt is None:
-        return int(datetime.now(timezone.utc).timestamp() * 1e9)
+        return int(datetime.now(UTC).timestamp() * 1e9)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return int(dt.timestamp() * 1e9)
 
 
@@ -52,7 +52,7 @@ class OpenTelemetryExporter:
         self.service_name = service_name
         self.service_version = service_version
 
-    def build_traceparent_header(self, trace: Trace, step: Optional[TraceStep] = None) -> str:
+    def build_traceparent_header(self, trace: Trace, step: TraceStep | None = None) -> str:
         """Builds standard W3C traceparent header: 00-{trace_id}-{span_id}-01."""
         trace_id = _to_w3c_trace_id(trace.trace_id)
         span_id = _to_w3c_span_id(trace.trace_id, step.step_index if step else 0)
@@ -76,7 +76,10 @@ class OpenTelemetryExporter:
         attributes: list[dict[str, Any]] = [
             {"key": "argvtix.step_type", "value": {"stringValue": step.step_type.value}},
             {"key": "argvtix.step_index", "value": {"intValue": step.step_index}},
-            {"key": "argvtix.session_id", "value": {"stringValue": getattr(trace, "session_id", "") or ""}},
+            {
+                "key": "argvtix.session_id",
+                "value": {"stringValue": getattr(trace, "session_id", "") or ""},
+            },
             {"key": "argvtix.workflow", "value": {"stringValue": workflow_str}},
         ]
 
@@ -85,50 +88,80 @@ class OpenTelemetryExporter:
 
         # GenAI Semantic Conventions
         if step.step_type == StepType.LLM_CALL and step.llm_call:
-            in_tok = getattr(step.llm_call, "input_tokens", getattr(step.llm_call, "prompt_tokens", 0)) or 0
-            out_tok = getattr(step.llm_call, "output_tokens", getattr(step.llm_call, "completion_tokens", 0)) or 0
-            cost_val = getattr(step.llm_call, "cost_usd", getattr(step.llm_call, "estimated_cost_usd", None))
+            in_tok = (
+                getattr(step.llm_call, "input_tokens", getattr(step.llm_call, "prompt_tokens", 0))
+                or 0
+            )
+            out_tok = (
+                getattr(
+                    step.llm_call, "output_tokens", getattr(step.llm_call, "completion_tokens", 0)
+                )
+                or 0
+            )
+            cost_val = getattr(
+                step.llm_call, "cost_usd", getattr(step.llm_call, "estimated_cost_usd", None)
+            )
 
-            attributes.extend([
-                {"key": "gen_ai.system", "value": {"stringValue": "gemini"}},
-                {"key": "gen_ai.request.model", "value": {"stringValue": step.llm_call.model or "unknown"}},
-                {"key": "gen_ai.usage.prompt_tokens", "value": {"intValue": in_tok}},
-                {"key": "gen_ai.usage.completion_tokens", "value": {"intValue": out_tok}},
-                {"key": "gen_ai.usage.total_tokens", "value": {"intValue": in_tok + out_tok}},
-            ])
+            attributes.extend(
+                [
+                    {"key": "gen_ai.system", "value": {"stringValue": "gemini"}},
+                    {
+                        "key": "gen_ai.request.model",
+                        "value": {"stringValue": step.llm_call.model or "unknown"},
+                    },
+                    {"key": "gen_ai.usage.prompt_tokens", "value": {"intValue": in_tok}},
+                    {"key": "gen_ai.usage.completion_tokens", "value": {"intValue": out_tok}},
+                    {"key": "gen_ai.usage.total_tokens", "value": {"intValue": in_tok + out_tok}},
+                ]
+            )
             if cost_val is not None:
-                attributes.append({
-                    "key": "gen_ai.usage.cost_usd",
-                    "value": {"doubleValue": float(cost_val)}
-                })
+                attributes.append(
+                    {"key": "gen_ai.usage.cost_usd", "value": {"doubleValue": float(cost_val)}}
+                )
 
         # Action Guard details
         if step.step_type == StepType.GUARD_DECISION and step.guard_decision:
-            rule_str = getattr(step.guard_decision, "policy_rule_triggered", getattr(step.guard_decision, "policy_version", "default"))
+            rule_str = getattr(
+                step.guard_decision,
+                "policy_rule_triggered",
+                getattr(step.guard_decision, "policy_version", "default"),
+            )
             risk_str = getattr(step.guard_decision, "risk_level", "normal")
             action_str = getattr(step.guard_decision, "action", "")
-            attributes.extend([
-                {"key": "argvtix.guard.action", "value": {"stringValue": action_str}},
-                {"key": "argvtix.guard.decision", "value": {"stringValue": step.guard_decision.decision.value}},
-                {"key": "argvtix.guard.rule", "value": {"stringValue": rule_str}},
-                {"key": "argvtix.guard.risk_level", "value": {"stringValue": risk_str}},
-            ])
+            attributes.extend(
+                [
+                    {"key": "argvtix.guard.action", "value": {"stringValue": action_str}},
+                    {
+                        "key": "argvtix.guard.decision",
+                        "value": {"stringValue": step.guard_decision.decision.value},
+                    },
+                    {"key": "argvtix.guard.rule", "value": {"stringValue": rule_str}},
+                    {"key": "argvtix.guard.risk_level", "value": {"stringValue": risk_str}},
+                ]
+            )
 
         # Tool Call details
         if step.step_type == StepType.TOOL_CALL and step.tool_call:
             is_succ = getattr(step.tool_call, "is_success", True)
             tool_status = "executed" if is_succ else "failed"
-            attributes.extend([
-                {"key": "argvtix.tool.name", "value": {"stringValue": step.tool_call.tool_name}},
-                {"key": "argvtix.tool.status", "value": {"stringValue": tool_status}},
-            ])
+            attributes.extend(
+                [
+                    {
+                        "key": "argvtix.tool.name",
+                        "value": {"stringValue": step.tool_call.tool_name},
+                    },
+                    {"key": "argvtix.tool.status", "value": {"stringValue": tool_status}},
+                ]
+            )
 
         # Status code (1=OK, 2=ERROR, 0=UNSET)
         is_error = step.step_type == StepType.ERROR or (
             step.tool_call and not getattr(step.tool_call, "is_success", True)
         )
         status_code = 2 if is_error else 1
-        status_message = step.error.error_message if (step.error and step.error.error_message) else "OK"
+        status_message = (
+            step.error.error_message if (step.error and step.error.error_message) else "OK"
+        )
 
         start_time_unix = _to_unix_nano(step.timestamp)
         # Duration in nanoseconds
@@ -161,30 +194,49 @@ class OpenTelemetryExporter:
 
         # Root Agent Execution Span
         root_start_unix = _to_unix_nano(trace.created_at)
-        latency = getattr(trace, "total_latency_ms", getattr(trace, "total_duration_ms", 10.0)) or 10.0
+        latency = (
+            getattr(trace, "total_latency_ms", getattr(trace, "total_duration_ms", 10.0)) or 10.0
+        )
         total_duration_ns = int(latency * 1e6)
         root_end_unix = root_start_unix + total_duration_ns
 
-        workflow_name = getattr(trace, "workflow", "") or (trace.tags[0] if (getattr(trace, "tags", None) and isinstance(trace.tags, list)) else "general")
+        workflow_name = getattr(trace, "workflow", "") or (
+            trace.tags[0]
+            if (getattr(trace, "tags", None) and isinstance(trace.tags, list))
+            else "general"
+        )
         input_str = getattr(trace, "input_text", getattr(trace, "user_input", ""))
 
         root_attributes: list[dict[str, Any]] = [
             {"key": "argvtix.trace_id", "value": {"stringValue": trace.trace_id}},
-            {"key": "argvtix.session_id", "value": {"stringValue": getattr(trace, "session_id", "") or ""}},
+            {
+                "key": "argvtix.session_id",
+                "value": {"stringValue": getattr(trace, "session_id", "") or ""},
+            },
             {"key": "argvtix.workflow", "value": {"stringValue": workflow_name}},
             {"key": "argvtix.user_input", "value": {"stringValue": input_str or ""}},
             {"key": "argvtix.status", "value": {"stringValue": trace.status.value}},
-            {"key": "argvtix.total_tokens", "value": {"intValue": getattr(trace, "total_tokens", 0) or 0}},
-            {"key": "argvtix.total_cost_usd", "value": {"doubleValue": float(getattr(trace, "total_cost_usd", 0.0) or 0.0)}},
+            {
+                "key": "argvtix.total_tokens",
+                "value": {"intValue": getattr(trace, "total_tokens", 0) or 0},
+            },
+            {
+                "key": "argvtix.total_cost_usd",
+                "value": {"doubleValue": float(getattr(trace, "total_cost_usd", 0.0) or 0.0)},
+            },
         ]
 
         if hasattr(trace, "tags") and trace.tags:
             if isinstance(trace.tags, list):
                 for idx, tag in enumerate(trace.tags):
-                    root_attributes.append({"key": f"argvtix.tag.{idx}", "value": {"stringValue": str(tag)}})
+                    root_attributes.append(
+                        {"key": f"argvtix.tag.{idx}", "value": {"stringValue": str(tag)}}
+                    )
             elif isinstance(trace.tags, dict):
                 for k, v in trace.tags.items():
-                    root_attributes.append({"key": f"argvtix.tag.{k}", "value": {"stringValue": str(v)}})
+                    root_attributes.append(
+                        {"key": f"argvtix.tag.{k}", "value": {"stringValue": str(v)}}
+                    )
 
         root_span: dict[str, Any] = {
             "traceId": trace_id,
@@ -210,7 +262,10 @@ class OpenTelemetryExporter:
                     {"key": "service.name", "value": {"stringValue": self.service_name}},
                     {"key": "service.version", "value": {"stringValue": self.service_version}},
                     {"key": "telemetry.sdk.language", "value": {"stringValue": "python"}},
-                    {"key": "telemetry.sdk.name", "value": {"stringValue": "argvtix-otel-exporter"}},
+                    {
+                        "key": "telemetry.sdk.name",
+                        "value": {"stringValue": "argvtix-otel-exporter"},
+                    },
                 ]
             },
             "scopeSpans": [

@@ -2,6 +2,7 @@
 Tests for Week 3: ShopOps Tools, RAG Retriever, and Agent.
 All tests use MockLLM + in-memory SQLite — no API key needed.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -21,6 +22,7 @@ from argvtix.target_app.tools.shop_tools import (
 # ---------------------------------------------------------------------------
 # Shared test DB fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def db():
@@ -43,11 +45,16 @@ def db():
     o3 = Order(id="3", customer_id="2", status="shipped", total_amount=1200.0)
     session.add_all([o1, o2, o3])
 
-    p1 = Payment(id="1", order_id="1", customer_id="1", amount=5000.0, method="upi", status="succeeded")
-    p2 = Payment(id="2", order_id="2", customer_id="1", amount=2500.0, method="card", status="succeeded")
+    p1 = Payment(
+        id="1", order_id="1", customer_id="1", amount=5000.0, method="upi", status="succeeded"
+    )
+    p2 = Payment(
+        id="2", order_id="2", customer_id="1", amount=2500.0, method="card", status="succeeded"
+    )
     session.add_all([p1, p2])
 
     from argvtix.db.models import Product
+
     prod = Product(id="1", sku="SKU-001", title="BoAt Headphones", price=2500.0, inventory_count=42)
     session.add(prod)
     session.commit()
@@ -59,6 +66,7 @@ def db():
 # ---------------------------------------------------------------------------
 # RAG Retriever Tests
 # ---------------------------------------------------------------------------
+
 
 class TestRAGRetriever:
     def test_refund_query_returns_policy(self):
@@ -92,6 +100,7 @@ class TestRAGRetriever:
 # ---------------------------------------------------------------------------
 # Tool Tests
 # ---------------------------------------------------------------------------
+
 
 class TestShopTools:
     def test_get_order_success(self, db):
@@ -146,6 +155,7 @@ class TestShopTools:
 # Agent Integration Tests
 # ---------------------------------------------------------------------------
 
+
 class TestShopOpsAgent:
     """Tests run the full LangGraph pipeline with MockLLM — no API key."""
 
@@ -159,7 +169,7 @@ class TestShopOpsAgent:
         assert result.intent == "refund"
         assert result.trace is not None
         assert result.trace.trace_id.startswith("tr-")
-        assert len(result.trace.steps) >= 3    # classify, retrieve, guard, execute, respond
+        assert len(result.trace.steps) >= 3  # classify, retrieve, guard, execute, respond
         assert result.response != ""
 
     def test_agent_cancel_flow(self, db):
@@ -217,6 +227,7 @@ class TestShopOpsAgent:
 # ---------------------------------------------------------------------------
 # TraceRecorder Unit Tests
 # ---------------------------------------------------------------------------
+
 
 class TestTraceRecorder:
     def test_recorder_builds_trace(self):

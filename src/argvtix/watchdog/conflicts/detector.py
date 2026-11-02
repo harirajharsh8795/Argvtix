@@ -3,6 +3,7 @@ Policy Conflict Detector
 Audits multiple policy documents or versions to detect contradictory clauses
 (e.g., conflicting refund windows, mismatched approval thresholds, SLA discrepancies).
 """
+
 from __future__ import annotations
 
 import re
@@ -70,7 +71,19 @@ class PolicyConflictDetector:
             s_lower = clean_s.lower()
 
             # 1. Refund Window
-            if any(k in s_lower for k in ("refund", "return", "claim", "money-back", "eligible", "allowed", "request within", "window")):
+            if any(
+                k in s_lower
+                for k in (
+                    "refund",
+                    "return",
+                    "claim",
+                    "money-back",
+                    "eligible",
+                    "allowed",
+                    "request within",
+                    "window",
+                )
+            ):
                 m = re.search(r"(\d+)\s*(days?|business days?)", s_lower)
                 if m:
                     clauses.append(
@@ -87,7 +100,19 @@ class PolicyConflictDetector:
                     continue
 
             # 2. Refund Approval Threshold
-            if any(k in s_lower for k in ("approval", "supervisor", "manager", "sign-off", "threshold", "review", "escalate", "auto-approve")):
+            if any(
+                k in s_lower
+                for k in (
+                    "approval",
+                    "supervisor",
+                    "manager",
+                    "sign-off",
+                    "threshold",
+                    "review",
+                    "escalate",
+                    "auto-approve",
+                )
+            ):
                 m = re.search(r"(?:rs\.?|inr)?\s*([\d,]+)", s_lower)
                 if m:
                     try:

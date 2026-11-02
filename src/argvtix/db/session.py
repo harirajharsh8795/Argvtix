@@ -88,7 +88,9 @@ def init_db(target_engine=None) -> None:
                 if "project_id" not in columns:
                     with eng.connect() as conn:
                         conn.execute(
-                            text(f"ALTER TABLE {tbl} ADD COLUMN project_id VARCHAR(64) DEFAULT 'default'")
+                            text(
+                                f"ALTER TABLE {tbl} ADD COLUMN project_id VARCHAR(64) DEFAULT 'default'"
+                            )
                         )
                         conn.commit()
 
@@ -105,9 +107,10 @@ def init_db(target_engine=None) -> None:
             if "ix_refunds_idempotency_key" not in indexes:
                 with eng.connect() as conn:
                     conn.execute(
-                        text("CREATE UNIQUE INDEX IF NOT EXISTS ix_refunds_idempotency_key ON refunds (idempotency_key)")
+                        text(
+                            "CREATE UNIQUE INDEX IF NOT EXISTS ix_refunds_idempotency_key ON refunds (idempotency_key)"
+                        )
                     )
                     conn.commit()
     except Exception:
         pass
-

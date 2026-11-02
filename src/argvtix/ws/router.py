@@ -8,12 +8,13 @@ Also exposes:
   GET /ws/status  — number of currently connected clients
   POST /ws/test   — push a test event (dev/debug only)
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
-from argvtix.ws.hub import Event, EventType, broadcast, get_hub
+from argvtix.ws.hub import EventType, broadcast, get_hub
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
 
@@ -43,16 +44,21 @@ async def websocket_events(websocket: WebSocket) -> None:
 async def ws_status() -> JSONResponse:
     """Return count of active WebSocket connections."""
     hub = get_hub()
-    return JSONResponse({
-        "connected_clients": hub.connected_count,
-        "endpoint": "ws://host/ws/events",
-    })
+    return JSONResponse(
+        {
+            "connected_clients": hub.connected_count,
+            "endpoint": "ws://host/ws/events",
+        }
+    )
 
 
 @router.post("/test")
-async def push_test_event(event_type: str = "system.notice", message: str = "Test event") -> JSONResponse:
+async def push_test_event(
+    event_type: str = "system.notice", message: str = "Test event"
+) -> JSONResponse:
     """Push a test event to all connected clients (dev only). Disabled in production."""
     import os
+
     env = os.getenv("ENVIRONMENT", os.getenv("ARGVTIX_ENV", "development")).lower()
     if env in ("production", "prod", "staging"):
         return JSONResponse(
@@ -66,8 +72,10 @@ async def push_test_event(event_type: str = "system.notice", message: str = "Tes
         source="dev-test",
     )
     hub = get_hub()
-    return JSONResponse({
-        "pushed": True,
-        "clients_notified": hub.connected_count,
-        "message": message,
-    })
+    return JSONResponse(
+        {
+            "pushed": True,
+            "clients_notified": hub.connected_count,
+            "message": message,
+        }
+    )

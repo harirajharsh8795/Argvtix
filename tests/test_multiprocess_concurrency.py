@@ -12,14 +12,12 @@ import os
 import sqlite3
 import subprocess
 import sys
-import tempfile
-import pytest
-
 from pathlib import Path
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from argvtix.db.models import Base, Customer, Order, Payment, Refund
+from argvtix.db.models import Base, Customer, Order, Payment
 
 
 def test_multiprocess_atomic_refund_idempotency(tmp_path):
@@ -39,9 +37,20 @@ def test_multiprocess_atomic_refund_idempotency(tmp_path):
     # 2. Seed data
     Session = sessionmaker(bind=engine)
     with Session() as s:
-        cust = Customer(id="c_mp", name="MP User", email="mp@enterprise.internal", phone="+919876543210")
-        ord1 = Order(id="o_mp", customer_id="c_mp", status="completed", subtotal=5000.0, tax=0.0, total_amount=5000.0)
-        pay1 = Payment(id="p_mp", order_id="o_mp", customer_id="c_mp", amount=5000.0, status="succeeded")
+        cust = Customer(
+            id="c_mp", name="MP User", email="mp@enterprise.internal", phone="+919876543210"
+        )
+        ord1 = Order(
+            id="o_mp",
+            customer_id="c_mp",
+            status="completed",
+            subtotal=5000.0,
+            tax=0.0,
+            total_amount=5000.0,
+        )
+        pay1 = Payment(
+            id="p_mp", order_id="o_mp", customer_id="c_mp", amount=5000.0, status="succeeded"
+        )
         s.add_all([cust, ord1, pay1])
         s.commit()
     engine.dispose()
@@ -86,22 +95,40 @@ with Session() as s:
         env["PYTHONPATH"] = src_dir
 
     # 4. Launch 2 independent Python OS processes concurrently
-    p1 = subprocess.Popen([sys.executable, str(worker_script)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-    p2 = subprocess.Popen([sys.executable, str(worker_script)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+    p1 = subprocess.Popen(
+        [sys.executable, str(worker_script)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    p2 = subprocess.Popen(
+        [sys.executable, str(worker_script)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
 
     out1, err1 = p1.communicate(timeout=15)
     out2, err2 = p2.communicate(timeout=15)
 
-    assert p1.returncode == 0, f"Process 1 failed with err: {err1.decode('utf-8', errors='replace')} out: {out1.decode('utf-8', errors='replace')}"
-    assert p2.returncode == 0, f"Process 2 failed with err: {err2.decode('utf-8', errors='replace')} out: {out2.decode('utf-8', errors='replace')}"
+    assert p1.returncode == 0, (
+        f"Process 1 failed with err: {err1.decode('utf-8', errors='replace')} out: {out1.decode('utf-8', errors='replace')}"
+    )
+    assert p2.returncode == 0, (
+        f"Process 2 failed with err: {err2.decode('utf-8', errors='replace')} out: {out2.decode('utf-8', errors='replace')}"
+    )
 
     # 5. Verify database state: Exactly ONE row committed
     conn = sqlite3.connect(str(db_file))
     cur = conn.cursor()
-    cur.execute("SELECT id, customer_id, order_id, amount, idempotency_key FROM refunds WHERE idempotency_key='shared_idemp_key_123'")
+    cur.execute(
+        "SELECT id, customer_id, order_id, amount, idempotency_key FROM refunds WHERE idempotency_key='shared_idemp_key_123'"
+    )
     rows = cur.fetchall()
     conn.close()
 
-    assert len(rows) == 1, f"Expected exactly 1 committed refund across processes, found {len(rows)}!"
+    assert len(rows) == 1, (
+        f"Expected exactly 1 committed refund across processes, found {len(rows)}!"
+    )
     assert rows[0][4] == "shared_idemp_key_123"
     assert rows[0][3] == 1500.0

@@ -12,7 +12,8 @@ Supports:
 from __future__ import annotations
 
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from argvtix.evals.claims.schemas import (
     Claim,
@@ -52,7 +53,9 @@ class ClaimExtractor:
 
         return self._extract_deterministic(text, context)
 
-    def _extract_deterministic(self, text: str, context: dict[str, Any] | None = None) -> list[Claim]:
+    def _extract_deterministic(
+        self, text: str, context: dict[str, Any] | None = None
+    ) -> list[Claim]:
         """
         Multilingual semantic extractor for agent responses.
         Handles English, Hindi (Devanagari), and Hinglish.
@@ -134,14 +137,20 @@ class ClaimExtractor:
             return eid, "entity"
 
         # Explicit order ID patterns
-        order_match = re.search(r"(?:order|ऑर्डर|aadesh)\s*(?:#|id|no\.?|number)?\s*([A-Za-z0-9_-]+)", text, re.IGNORECASE)
+        order_match = re.search(
+            r"(?:order|ऑर्डर|aadesh)\s*(?:#|id|no\.?|number)?\s*([A-Za-z0-9_-]+)",
+            text,
+            re.IGNORECASE,
+        )
         if order_match:
             val = order_match.group(1).strip()
             if val and val.lower() not in {"is", "has", "ko", "ka", "ki", "par", "hai"}:
                 return val, "order"
 
         # Explicit ticket ID patterns
-        ticket_match = re.search(r"(?:ticket|टिकट)\s*(?:#|id|no\.?|number)?\s*([A-Za-z0-9_-]+)", text, re.IGNORECASE)
+        ticket_match = re.search(
+            r"(?:ticket|टिकट)\s*(?:#|id|no\.?|number)?\s*([A-Za-z0-9_-]+)", text, re.IGNORECASE
+        )
         if ticket_match:
             val = ticket_match.group(1).strip()
             if val and val.lower() not in {"is", "has", "ko", "ka", "ki"}:
@@ -181,7 +190,14 @@ class ClaimExtractor:
         return None, None
 
     def _extract_refund_claim(self, sent: str, sent_lower: str) -> Claim | None:
-        keywords = ["refund", "रिफंड", "vaapsi", "paisa wapas", "credited back", "initiated your refund"]
+        keywords = [
+            "refund",
+            "रिफंड",
+            "vaapsi",
+            "paisa wapas",
+            "credited back",
+            "initiated your refund",
+        ]
         if not any(k in sent_lower for k in keywords):
             return None
 
@@ -189,8 +205,19 @@ class ClaimExtractor:
         amt, cur = self._extract_amount_currency(sent)
 
         # Detect failure vs success
-        is_failure = any(w in sent_lower for w in ["cannot refund", "failed to refund", "not eligible for refund", "refund nahi ho sakta", "unable to refund"])
-        is_pending = any(w in sent_lower for w in ["pending", "in progress", "initiated", "under review"])
+        is_failure = any(
+            w in sent_lower
+            for w in [
+                "cannot refund",
+                "failed to refund",
+                "not eligible for refund",
+                "refund nahi ho sakta",
+                "unable to refund",
+            ]
+        )
+        is_pending = any(
+            w in sent_lower for w in ["pending", "in progress", "initiated", "under review"]
+        )
 
         status = "failed" if is_failure else ("pending" if is_pending else "completed")
         is_success = not is_failure
@@ -242,14 +269,32 @@ class ClaimExtractor:
         )
 
     def _extract_status_claim(self, sent: str, sent_lower: str) -> Claim | None:
-        keywords = ["status", "delivered", "shipped", "dispatched", "out for delivery", "in transit", "deliver ho gaya", "bheja gaya", "पहुंचा"]
+        keywords = [
+            "status",
+            "delivered",
+            "shipped",
+            "dispatched",
+            "out for delivery",
+            "in transit",
+            "deliver ho gaya",
+            "bheja gaya",
+            "पहुंचा",
+        ]
         if not any(k in sent_lower for k in keywords):
             return None
 
         eid, etype = self._extract_entity_id(sent)
 
-        status = "delivered" if any(w in sent_lower for w in ["delivered", "deliver ho gaya", "पहुंचा"]) else (
-            "shipped" if any(w in sent_lower for w in ["shipped", "dispatched", "in transit", "bheja gaya"]) else "active"
+        status = (
+            "delivered"
+            if any(w in sent_lower for w in ["delivered", "deliver ho gaya", "पहुंचा"])
+            else (
+                "shipped"
+                if any(
+                    w in sent_lower for w in ["shipped", "dispatched", "in transit", "bheja gaya"]
+                )
+                else "active"
+            )
         )
 
         return Claim(
@@ -263,7 +308,15 @@ class ClaimExtractor:
         )
 
     def _extract_ticket_claim(self, sent: str, sent_lower: str) -> Claim | None:
-        keywords = ["ticket", "escalat", "शिकायत", "shikayat", "support team", "tier 2", "senior team"]
+        keywords = [
+            "ticket",
+            "escalat",
+            "शिकायत",
+            "shikayat",
+            "support team",
+            "tier 2",
+            "senior team",
+        ]
         if not any(k in sent_lower for k in keywords):
             return None
 
@@ -287,7 +340,9 @@ class ClaimExtractor:
         eid, etype = self._extract_entity_id(sent)
         amt, cur = self._extract_amount_currency(sent)
 
-        is_failure = any(w in sent_lower for w in ["payment failed", "could not process", "declined", "vifalat"])
+        is_failure = any(
+            w in sent_lower for w in ["payment failed", "could not process", "declined", "vifalat"]
+        )
         status = "failed" if is_failure else "completed"
 
         return Claim(

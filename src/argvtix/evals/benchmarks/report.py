@@ -4,6 +4,7 @@ Benchmark Report Generator.
 Produces a rich Markdown comparison table from a BenchmarkRunResult,
 suitable for CI artefacts, Slack posts, or the React dashboard.
 """
+
 from __future__ import annotations
 
 import json
@@ -25,17 +26,17 @@ class BenchmarkReport:
     def to_markdown(self) -> str:
         r = self._run
         lines: list[str] = [
-            f"# Multi-Model Benchmark Report",
-            f"",
+            "# Multi-Model Benchmark Report",
+            "",
             f"**Run ID:** `{r.run_id}`  ",
             f"**Timestamp:** {r.timestamp}  ",
             f"**Golden Cases:** {r.total_cases}  ",
             f"**Models Evaluated:** {r.total_models}",
-            f"",
-            f"## Results",
-            f"",
-            f"| Model | Accuracy | P50 ms | P90 ms | Total Cost | Errors | Badges |",
-            f"|-------|----------|--------|--------|-----------|--------|--------|",
+            "",
+            "## Results",
+            "",
+            "| Model | Accuracy | P50 ms | P90 ms | Total Cost | Errors | Badges |",
+            "|-------|----------|--------|--------|-----------|--------|--------|",
         ]
         for res in r.ranked_by_accuracy():
             badges = []
@@ -56,9 +57,9 @@ class BenchmarkReport:
             )
 
         lines += [
-            f"",
-            f"## Winner Summary",
-            f"",
+            "",
+            "## Winner Summary",
+            "",
             f"- **Best Accuracy:** `{r.winner_accuracy}`",
             f"- **Lowest Cost:**   `{r.winner_cost}`",
             f"- **Fastest P50:**   `{r.winner_latency}`",

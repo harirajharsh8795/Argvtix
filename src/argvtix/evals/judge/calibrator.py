@@ -6,11 +6,12 @@ Calibrates automated evaluation judge against human gold-standard labels:
 - Computes Pearson correlation and Mean Absolute Error (MAE) on continuous scores (0.0 to 10.0)
 - Enforces enterprise calibration standard: Cohen's Kappa >= 0.70
 """
+
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import yaml
 
@@ -48,7 +49,9 @@ class JudgeCalibrator:
         First executes judge injection defence check.
         """
         # 1. Defence check
-        is_inj, reason = self.defence.scan_for_injection(case.input_prompt + " " + case.agent_response)
+        is_inj, reason = self.defence.scan_for_injection(
+            case.input_prompt + " " + case.agent_response
+        )
         if is_inj:
             return JudgeVerdict(
                 case_id=case.id,
@@ -182,20 +185,26 @@ class JudgeCalibrator:
             if h_pass == j_pass:
                 agreed_count += 1
 
-            details.append({
-                "case_id": case.id,
-                "gold_score": case.gold_score,
-                "judge_score": verdict.overall_score,
-                "human_passed": h_pass,
-                "judge_passed": j_pass,
-                "expected_verdict": case.expected_verdict,
-            })
+            details.append(
+                {
+                    "case_id": case.id,
+                    "gold_score": case.gold_score,
+                    "judge_score": verdict.overall_score,
+                    "human_passed": h_pass,
+                    "judge_passed": j_pass,
+                    "expected_verdict": case.expected_verdict,
+                }
+            )
 
         total = len(cases)
         kappa = self.compute_cohens_kappa(human_binary, judge_binary)
         pearson_r = self.compute_pearson_r(human_scores, judge_scores)
         raw_agreement = (agreed_count / total * 100.0) if total > 0 else 100.0
-        mae = sum(abs(h - j) for h, j in zip(human_scores, judge_scores)) / total if total > 0 else 0.0
+        mae = (
+            sum(abs(h - j) for h, j in zip(human_scores, judge_scores)) / total
+            if total > 0
+            else 0.0
+        )
 
         # Enterprise standard: Cohen's Kappa >= 0.70
         is_calibrated = kappa >= 0.70

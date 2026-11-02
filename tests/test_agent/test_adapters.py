@@ -1,6 +1,7 @@
 """
 Tests for Model Adapter Layer and Capability Registry (MISSING-02).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -31,7 +32,9 @@ class TestCapabilityRegistry:
         assert ModelCapability.VISION in gpt.capabilities
 
     def test_capability_support_and_assertion(self):
-        assert capability_registry.supports("gemini-2.0-flash", ModelCapability.TOOL_CALLING) is True
+        assert (
+            capability_registry.supports("gemini-2.0-flash", ModelCapability.TOOL_CALLING) is True
+        )
 
         # Custom model without vision
         capability_registry.register(

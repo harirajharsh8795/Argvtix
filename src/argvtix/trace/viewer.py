@@ -6,6 +6,7 @@ Usage:
     python -m argvtix.trace.viewer tr-a1b2c3d4e5f6
     python -m argvtix.trace.viewer --list
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,7 +31,9 @@ def format_step_detail(step) -> str:
 
     if step.step_type == StepType.LLM_CALL and step.llm_call:
         c = step.llm_call
-        lines.append(f"       Model: {c.model} | Tokens: {c.total_tokens} (in: {c.input_tokens}, out: {c.output_tokens})")
+        lines.append(
+            f"       Model: {c.model} | Tokens: {c.total_tokens} (in: {c.input_tokens}, out: {c.output_tokens})"
+        )
         if c.output_text:
             snippet = c.output_text.replace("\n", " ")[:70]
             lines.append(f"       Output snippet: {snippet}...")
@@ -91,7 +94,9 @@ def display_recent_traces(records) -> None:
     print("  +---------------------------------------------------------------+")
     print("  |                     RECENT RECORDED TRACES                    |")
     print("  +---------------------------------------------------------------+")
-    print(f"  {'Trace ID':<20} | {'Status':<10} | {'Latency':<9} | {'Tokens':<7} | {'Workflow':<12}")
+    print(
+        f"  {'Trace ID':<20} | {'Status':<10} | {'Latency':<9} | {'Tokens':<7} | {'Workflow':<12}"
+    )
     print(_divider("-"))
 
     if not records:
@@ -116,7 +121,9 @@ def main() -> None:
     parser.add_argument("trace_id", nargs="?", help="Trace ID to inspect (e.g. tr-abc123)")
     parser.add_argument("--latest", action="store_true", help="View the most recent trace")
     parser.add_argument("--list", action="store_true", help="List recent recorded traces")
-    parser.add_argument("--limit", type=int, default=10, help="Number of traces to list (default: 10)")
+    parser.add_argument(
+        "--limit", type=int, default=10, help="Number of traces to list (default: 10)"
+    )
     args = parser.parse_args()
 
     init_db()

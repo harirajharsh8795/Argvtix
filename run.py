@@ -6,17 +6,18 @@ Press Ctrl+C to stop both services cleanly.
 """
 
 import os
-import sys
-import time
 import signal
 import subprocess
+import sys
 import threading
+import time
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent
 UI_DIR = ROOT_DIR / "ui"
 
 processes = []
+
 
 def stream_logs(process, prefix, color_code):
     """Streams stdout/stderr lines with a colored prefix."""
@@ -29,20 +30,29 @@ def stream_logs(process, prefix, color_code):
     except Exception:
         pass
 
+
 def cleanup(signum=None, frame=None):
     """Terminates all child processes cleanly."""
-    print("\n\033[1;33m[SHUTDOWN]\033[0m Stopping Argvtix Backend and Frontend services...", flush=True)
+    print(
+        "\n\033[1;33m[SHUTDOWN]\033[0m Stopping Argvtix Backend and Frontend services...",
+        flush=True,
+    )
     for p in processes:
         if p.poll() is None:
             try:
                 if sys.platform == "win32":
-                    subprocess.call(["taskkill", "/F", "/T", "/PID", str(p.pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.call(
+                        ["taskkill", "/F", "/T", "/PID", str(p.pid)],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
                 else:
                     p.terminate()
             except Exception:
                 pass
     print("\033[1;32m[SHUTDOWN]\033[0m All services stopped successfully.", flush=True)
     sys.exit(0)
+
 
 def main():
     signal.signal(signal.SIGINT, cleanup)
@@ -76,10 +86,17 @@ def main():
         "8000",
     ]
 
-    print("\033[1;34m[SYSTEM]\033[0m Spawning FastAPI backend on http://127.0.0.1:8000 ...", flush=True)
+    print(
+        "\033[1;34m[SYSTEM]\033[0m Spawning FastAPI backend on http://127.0.0.1:8000 ...",
+        flush=True,
+    )
+    backend_env = dict(os.environ)
+    src_dir = str(ROOT_DIR / "src")
+    backend_env["PYTHONPATH"] = f"{src_dir};{backend_env.get('PYTHONPATH', '')}"
     backend_proc = subprocess.Popen(
         backend_cmd,
         cwd=str(ROOT_DIR),
+        env=backend_env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -91,7 +108,9 @@ def main():
     npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
     frontend_cmd = [npm_cmd, "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173"]
 
-    print("\033[1;35m[SYSTEM]\033[0m Spawning Vite frontend on http://127.0.0.1:5173 ...", flush=True)
+    print(
+        "\033[1;35m[SYSTEM]\033[0m Spawning Vite frontend on http://127.0.0.1:5173 ...", flush=True
+    )
     frontend_proc = subprocess.Popen(
         frontend_cmd,
         cwd=str(UI_DIR),
@@ -104,8 +123,12 @@ def main():
     processes.append(frontend_proc)
 
     # Start stream reader threads
-    t1 = threading.Thread(target=stream_logs, args=(backend_proc, "[BACKEND]", "\033[36m"), daemon=True)
-    t2 = threading.Thread(target=stream_logs, args=(frontend_proc, "[FRONTEND]", "\033[32m"), daemon=True)
+    t1 = threading.Thread(
+        target=stream_logs, args=(backend_proc, "[BACKEND]", "\033[36m"), daemon=True
+    )
+    t2 = threading.Thread(
+        target=stream_logs, args=(frontend_proc, "[FRONTEND]", "\033[32m"), daemon=True
+    )
     t1.start()
     t2.start()
 
@@ -121,6 +144,7 @@ def main():
                 cleanup()
     except KeyboardInterrupt:
         cleanup()
+
 
 if __name__ == "__main__":
     main()

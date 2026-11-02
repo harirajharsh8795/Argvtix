@@ -6,6 +6,7 @@ Features:
 - Golden case evaluation: Evaluates agent output and guard decisions against ground-truth expectations.
 - Suite benchmark runner: Runs all 50 golden benchmark cases and outputs aggregate accuracy metrics.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -22,6 +23,7 @@ from argvtix.trace.store import get_trace
 @dataclass
 class ReplayComparison:
     """Side-by-side comparison between original historical trace and replayed run."""
+
     trace_id: str
     original_status: str
     replayed_status: str
@@ -40,6 +42,7 @@ class ReplayComparison:
 @dataclass
 class CaseReplayResult:
     """Result of running agent on a single ground-truth golden case."""
+
     case_id: str
     workflow: str
     ticket_text: str
@@ -59,6 +62,7 @@ class CaseReplayResult:
 @dataclass
 class SuiteBenchmarkResult:
     """Summary of running a batch of golden cases."""
+
     total_cases: int
     passed_cases: int
     failed_cases: int
@@ -98,7 +102,11 @@ class ReplayEngine:
             workflow_id=orig_trace.metadata.get("workflow_id", "wf-shopops-support"),
         )
 
-        customer_id_val = int(orig_trace.customer_id) if orig_trace.customer_id and orig_trace.customer_id.isdigit() else 1
+        customer_id_val = (
+            int(orig_trace.customer_id)
+            if orig_trace.customer_id and orig_trace.customer_id.isdigit()
+            else 1
+        )
         agent_res = agent.run(
             ticket_text=orig_trace.input_text,
             customer_id=customer_id_val,
@@ -150,7 +158,12 @@ class ReplayEngine:
         target_llm = llm or self.default_llm
         agent = ShopOpsAgent(db=self.db, llm=target_llm)
 
-        cust_id = int(case.customer_id.replace("cust_", "")) if case.customer_id.startswith("cust_") and case.customer_id.replace("cust_", "").isdigit() else 1
+        cust_id = (
+            int(case.customer_id.replace("cust_", ""))
+            if case.customer_id.startswith("cust_")
+            and case.customer_id.replace("cust_", "").isdigit()
+            else 1
+        )
 
         res = agent.run(
             ticket_text=case.ticket_text,
@@ -159,15 +172,17 @@ class ReplayEngine:
 
         actual_intent = str(res.intent).lower()
         exp_intent = case.expected_intent.lower()
-        intent_match = (actual_intent == exp_intent)
+        intent_match = actual_intent == exp_intent
 
         actual_guard = str(res.guard_decision).lower()
         exp_guard = case.expected_guard_decision.lower()
-        guard_match = (actual_guard == exp_guard)
+        guard_match = actual_guard == exp_guard
 
         failure_reasons: list[str] = []
         if not intent_match:
-            failure_reasons.append(f"Intent mismatch: expected '{exp_intent}', got '{actual_intent}'")
+            failure_reasons.append(
+                f"Intent mismatch: expected '{exp_intent}', got '{actual_intent}'"
+            )
         if not guard_match:
             failure_reasons.append(f"Guard mismatch: expected '{exp_guard}', got '{actual_guard}'")
 

@@ -7,6 +7,7 @@ Features:
 2. Formatted citations (doc_id, title, citation string).
 3. Refusal threshold: Gracefully returns 'I do not have policy information' when query score is below threshold.
 """
+
 from __future__ import annotations
 
 import re
@@ -16,17 +17,131 @@ from typing import Any
 from argvtix.target_app.rag.policy_docs import POLICY_DOCUMENTS
 
 ENGLISH_STOP_WORDS = {
-    "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are",
-    "as", "at", "be", "because", "been", "before", "being", "below", "between", "both", "but", "by",
-    "can", "could", "did", "do", "does", "doing", "down", "during", "each", "few", "for", "from",
-    "further", "had", "has", "have", "having", "he", "her", "here", "hers", "herself", "him",
-    "himself", "his", "how", "i", "if", "in", "into", "is", "it", "its", "itself", "me", "more",
-    "most", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "only", "or", "other",
-    "our", "ours", "ourselves", "out", "over", "own", "same", "she", "should", "so", "some", "such",
-    "than", "that", "the", "their", "theirs", "them", "themselves", "then", "there", "these", "they",
-    "this", "those", "through", "to", "too", "under", "until", "up", "very", "was", "we", "were",
-    "what", "when", "where", "which", "while", "who", "whom", "why", "with", "would", "you", "your",
-    "yours", "yourself", "yourselves", "many", "system",
+    "a",
+    "about",
+    "above",
+    "after",
+    "again",
+    "against",
+    "all",
+    "am",
+    "an",
+    "and",
+    "any",
+    "are",
+    "as",
+    "at",
+    "be",
+    "because",
+    "been",
+    "before",
+    "being",
+    "below",
+    "between",
+    "both",
+    "but",
+    "by",
+    "can",
+    "could",
+    "did",
+    "do",
+    "does",
+    "doing",
+    "down",
+    "during",
+    "each",
+    "few",
+    "for",
+    "from",
+    "further",
+    "had",
+    "has",
+    "have",
+    "having",
+    "he",
+    "her",
+    "here",
+    "hers",
+    "herself",
+    "him",
+    "himself",
+    "his",
+    "how",
+    "i",
+    "if",
+    "in",
+    "into",
+    "is",
+    "it",
+    "its",
+    "itself",
+    "me",
+    "more",
+    "most",
+    "my",
+    "myself",
+    "no",
+    "nor",
+    "not",
+    "of",
+    "off",
+    "on",
+    "once",
+    "only",
+    "or",
+    "other",
+    "our",
+    "ours",
+    "ourselves",
+    "out",
+    "over",
+    "own",
+    "same",
+    "she",
+    "should",
+    "so",
+    "some",
+    "such",
+    "than",
+    "that",
+    "the",
+    "their",
+    "theirs",
+    "them",
+    "themselves",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
+    "those",
+    "through",
+    "to",
+    "too",
+    "under",
+    "until",
+    "up",
+    "very",
+    "was",
+    "we",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "who",
+    "whom",
+    "why",
+    "with",
+    "would",
+    "you",
+    "your",
+    "yours",
+    "yourself",
+    "yourselves",
+    "many",
+    "system",
 }
 
 
@@ -85,8 +200,7 @@ def retrieve_policy_with_citations(
     is_answerable=False and provides a safe refusal message.
     """
     query_tokens = {
-        w for w in re.findall(r"\w+", query.lower())
-        if w not in ENGLISH_STOP_WORDS and len(w) > 1
+        w for w in re.findall(r"\w+", query.lower()) if w not in ENGLISH_STOP_WORDS and len(w) > 1
     }
 
     if not query_tokens:
@@ -100,11 +214,13 @@ def retrieve_policy_with_citations(
     scored: list[tuple[int, dict[str, Any]]] = []
     for doc in POLICY_DOCUMENTS:
         doc_tokens = {
-            w for w in re.findall(r"\w+", (doc["title"] + " " + doc["content"]).lower())
+            w
+            for w in re.findall(r"\w+", (doc["title"] + " " + doc["content"]).lower())
             if w not in ENGLISH_STOP_WORDS
         }
         tag_tokens = {
-            w for w in re.findall(r"\w+", " ".join(doc["tags"]).lower())
+            w
+            for w in re.findall(r"\w+", " ".join(doc["tags"]).lower())
             if w not in ENGLISH_STOP_WORDS
         }
         overlap = len(query_tokens & (doc_tokens | tag_tokens))

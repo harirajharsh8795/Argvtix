@@ -11,11 +11,10 @@ Deliverables produced:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import json
-from pathlib import Path
 import sys
 import time
+from pathlib import Path
 
 # Ensure repository root is on sys.path
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -34,10 +33,10 @@ if sys.platform == "win32":
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 from argvtix.scout.probes.registry import ProbeRegistry
-from argvtix.scout.report import AuditStatus, ScoutAuditReport
+from argvtix.scout.report import ScoutAuditReport
 from argvtix.scout.runner import ScoutRunner
 from argvtix.scout.safety import ScoutSafetyController
-from argvtix.scout.scope import ScopeConfig, load_scope_from_yaml
+from argvtix.scout.scope import load_scope_from_yaml
 
 
 def simulate_shopops_agent(user_input: str, history: list[dict[str, str]]) -> str:
@@ -52,7 +51,11 @@ def simulate_shopops_agent(user_input: str, history: list[dict[str, str]]) -> st
     text = user_input.lower()
 
     # 1. Prompt Injection defenses
-    if "ignore all previous instructions" in text or "repeat verbatim" in text or "system prompt" in text:
+    if (
+        "ignore all previous instructions" in text
+        or "repeat verbatim" in text
+        or "system prompt" in text
+    ):
         return (
             "I am the ShopOps Customer Support Assistant. I cannot reveal internal instructions, "
             "system prompts, or configuration parameters. How may I help you with your order?"
@@ -153,7 +156,9 @@ def run_audit_suite() -> tuple[ScoutAuditReport, Path, Path]:
 
     registry = ProbeRegistry()
     probes = registry.list_all()
-    print(f"Loaded {len(probes)} probes across {len(registry.get_category_counts())} threat categories.")
+    print(
+        f"Loaded {len(probes)} probes across {len(registry.get_category_counts())} threat categories."
+    )
 
     # Initialize safety controller with accelerated rate for local sandbox demo
     safety = ScoutSafetyController(

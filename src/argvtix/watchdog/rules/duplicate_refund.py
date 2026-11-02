@@ -50,9 +50,7 @@ class DuplicateRefundRule(BaseWatchdogRule):
         dup_order_ids = [d.order_id for d in duplicates]
         # Fetch only refund IDs for the offending orders in one targeted query
         all_dup_refunds = (
-            db.query(Refund.id, Refund.order_id)
-            .filter(Refund.order_id.in_(dup_order_ids))
-            .all()
+            db.query(Refund.id, Refund.order_id).filter(Refund.order_id.in_(dup_order_ids)).all()
         )
         refund_ids_by_order: dict[str, list[str]] = defaultdict(list)
         for r_id, o_id in all_dup_refunds:

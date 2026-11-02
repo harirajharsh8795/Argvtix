@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
+
 from pydantic import BaseModel, Field
+
 from argvtix_sdk.client import ArgvtixClient
 
 
 class GatewayExecutionResult(BaseModel):
     """Result of calling a tool through the Argvtix Tool Gateway."""
+
     tool_name: str
     decision: str = Field(description="'ALLOW', 'BLOCK', or 'ASK_HUMAN'")
     allowed: bool
-    result: Optional[dict[str, Any]] = None
-    violation_reason: Optional[str] = None
-    approval_id: Optional[str] = None
+    result: dict[str, Any] | None = None
+    violation_reason: str | None = None
+    approval_id: str | None = None
     requires_approval: bool = False
 
 
@@ -33,8 +37,8 @@ class ToolGatewayClient:
         self,
         tool_name: str,
         parameters: dict[str, Any],
-        order_id: Optional[str] = None,
-        amount: Optional[float] = None,
+        order_id: str | None = None,
+        amount: float | None = None,
         agent_id: str = "sdk-agent",
     ) -> GatewayExecutionResult:
         """Submits tool invocation to Argvtix Gateway.
@@ -67,7 +71,9 @@ class ToolGatewayClient:
             tool_name=tool_name,
             decision=decision,
             allowed=allowed,
-            result=result_payload if isinstance(result_payload, dict) else {"output": result_payload},
+            result=result_payload
+            if isinstance(result_payload, dict)
+            else {"output": result_payload},
             violation_reason=response.get("reason"),
             approval_id=response.get("approval_id"),
             requires_approval=requires_approval,

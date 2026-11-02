@@ -5,6 +5,7 @@ Every node in the LangGraph agent calls these hooks so that each LLM call,
 retrieval, tool use, and guard decision is persisted as a TraceStep matching
 the core Pydantic v2 schemas.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -160,11 +161,7 @@ class TraceRecorder:
             dec_enum = decision
 
         reasons = [reason] if reason else []
-        entity_id = (
-            str(action_params.get("order_id"))
-            if action_params.get("order_id")
-            else None
-        )
+        entity_id = str(action_params.get("order_id")) if action_params.get("order_id") else None
 
         step = TraceStep(
             step_id=f"step-{uuid.uuid4().hex[:8]}",
@@ -178,7 +175,9 @@ class TraceRecorder:
                 entity_id=entity_id,
                 checks_performed=[policy_triggered] if policy_triggered else ["policy_check"],
                 checks_passed=[] if dec_enum == GuardDecision.BLOCK else ["policy_check"],
-                checks_failed=[policy_triggered] if dec_enum == GuardDecision.BLOCK and policy_triggered else [],
+                checks_failed=[policy_triggered]
+                if dec_enum == GuardDecision.BLOCK and policy_triggered
+                else [],
                 decision=dec_enum,
                 reasons=reasons,
                 policy_version="1.0.0",
@@ -242,16 +241,10 @@ class TraceRecorder:
         total_ms = (finished_at - self.started_at).total_seconds() * 1000
 
         total_tokens = sum(
-            step.llm_call.total_tokens
-            for step in self._steps
-            if step.llm_call is not None
+            step.llm_call.total_tokens for step in self._steps if step.llm_call is not None
         )
 
-        trace_status = (
-            TraceStatus(status.lower())
-            if isinstance(status, str)
-            else status
-        )
+        trace_status = TraceStatus(status.lower()) if isinstance(status, str) else status
 
         return Trace(
             trace_id=self.trace_id,

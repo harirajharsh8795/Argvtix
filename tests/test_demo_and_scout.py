@@ -4,14 +4,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import pytest
 
 from argvtix.scout.probes.registry import ProbeRegistry
 from argvtix.scout.report import AuditGrade, AuditStatus, calculate_grade
 from argvtix.scout.runner import ScoutRunner
-from argvtix.scout.safety import ScoutSafetyController
 from argvtix.scout.scope import ScopeConfig, load_scope_from_yaml
-from argvtix.target_app.spend_guard import LLMSpendGuard
 from argvtix.trace.otel_export import OpenTelemetryExporter, _to_w3c_span_id, _to_w3c_trace_id
 from argvtix.trace.schemas import (
     GuardDecision,
@@ -23,7 +20,6 @@ from argvtix.trace.schemas import (
     Trace,
     TraceStep,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -209,7 +205,9 @@ class TestDemoArtifacts:
 
     def test_demo_evidence_packet_exists(self):
         packet_path = REPO_ROOT / "bench" / "demo_evidence_packet.json"
-        assert packet_path.exists(), "demo_evidence_packet.json should have been created by run_demo.py"
+        assert packet_path.exists(), (
+            "demo_evidence_packet.json should have been created by run_demo.py"
+        )
         data = json.loads(packet_path.read_text(encoding="utf-8"))
         assert "audit_id" in data
         assert "interceptions" in data

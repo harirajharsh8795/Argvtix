@@ -21,13 +21,13 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import sys
 import time
 import uuid
+from datetime import UTC, datetime
+from pathlib import Path
 
 # Ensure root argvtix directory and src are on sys.path
 root_dir = str(Path(__file__).resolve().parent.parent)
@@ -37,14 +37,21 @@ if root_dir not in sys.path:
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-from sqlalchemy import create_engine, select, func, text
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker
 
-from argvtix.db.models import Base, Customer, Order, OrderItem, Payment, Refund
+from argvtix.db.models import Base, Customer, Order, Payment, Refund
 from argvtix.target_app.tools.shop_tools import issue_refund
 
 
-def setup_test_records(engine, session_factory, customer_id: str, order_id: str, payment_id: str, order_amount: float = 10000.0):
+def setup_test_records(
+    engine,
+    session_factory,
+    customer_id: str,
+    order_id: str,
+    payment_id: str,
+    order_amount: float = 10000.0,
+):
     """Seed prerequisite customer, order, and payment records for refund testing."""
     with session_factory() as session:
         cust = session.get(Customer, customer_id)
@@ -64,7 +71,7 @@ def setup_test_records(engine, session_factory, customer_id: str, order_id: str,
                 customer_id=customer_id,
                 status="delivered",
                 total_amount=order_amount,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
             session.add(order)
 
@@ -76,18 +83,25 @@ def setup_test_records(engine, session_factory, customer_id: str, order_id: str,
                 customer_id=customer_id,
                 amount=order_amount,
                 status="succeeded",
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
             session.add(payment)
 
         session.commit()
 
 
-def execute_worker_refund(worker_id: int, db_url: str, customer_id: str, order_id: str, amount: float, idempotency_key: str) -> dict:
+def execute_worker_refund(
+    worker_id: int,
+    db_url: str,
+    customer_id: str,
+    order_id: str,
+    amount: float,
+    idempotency_key: str,
+) -> dict:
     """Independent worker execution attempting to issue refund with identical idempotency key."""
     engine = create_engine(db_url, pool_pre_ping=True)
     SessionWorker = sessionmaker(bind=engine)
-    
+
     start_time = time.perf_counter()
     with SessionWorker() as session:
         tool_res = issue_refund(
@@ -109,7 +123,9 @@ def execute_worker_refund(worker_id: int, db_url: str, customer_id: str, order_i
     }
 
 
-def run_concurrency_tier(db_url: str, session_factory, concurrency: int, refund_amount: float = 1250.0) -> dict:
+def run_concurrency_tier(
+    db_url: str, session_factory, concurrency: int, refund_amount: float = 1250.0
+) -> dict:
     test_uid = uuid.uuid4().hex[:8]
     cust_id = f"cust_tier_{concurrency}_{test_uid}"
     order_id = f"ord_tier_{concurrency}_{test_uid}"
@@ -117,15 +133,32 @@ def run_concurrency_tier(db_url: str, session_factory, concurrency: int, refund_
     idempotency_key = f"idem-tier-{concurrency}-{test_uid}"
 
     # Setup database records
-    setup_test_records(None, session_factory, cust_id, order_id, payment_id, order_amount=concurrency * refund_amount)
+    setup_test_records(
+        None,
+        session_factory,
+        cust_id,
+        order_id,
+        payment_id,
+        order_amount=concurrency * refund_amount,
+    )
 
-    print(f"\n---> Testing Concurrency Tier: {concurrency} concurrent workers (Key: {idempotency_key})")
+    print(
+        f"\n---> Testing Concurrency Tier: {concurrency} concurrent workers (Key: {idempotency_key})"
+    )
     tier_start = time.perf_counter()
 
     worker_results: list[dict] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
         futures = [
-            executor.submit(execute_worker_refund, i + 1, db_url, cust_id, order_id, refund_amount, idempotency_key)
+            executor.submit(
+                execute_worker_refund,
+                i + 1,
+                db_url,
+                cust_id,
+                order_id,
+                refund_amount,
+                idempotency_key,
+            )
             for i in range(concurrency)
         ]
         for f in concurrent.futures.as_completed(futures):
@@ -138,7 +171,9 @@ def run_concurrency_tier(db_url: str, session_factory, concurrency: int, refund_
         count_stmt = select(func.count(Refund.id)).where(Refund.idempotency_key == idempotency_key)
         committed_rows = session.scalar(count_stmt)
 
-        refund_rows = session.scalars(select(Refund).where(Refund.idempotency_key == idempotency_key)).all()
+        refund_rows = session.scalars(
+            select(Refund).where(Refund.idempotency_key == idempotency_key)
+        ).all()
         total_refunded = sum(r.amount for r in refund_rows)
         primary_refund_id = refund_rows[0].id if refund_rows else None
 
@@ -151,9 +186,15 @@ def run_concurrency_tier(db_url: str, session_factory, concurrency: int, refund_
 
     tier_passed = all_success and single_returned_id and exact_single_row and exact_amount
 
-    print(f"     Committed Rows: {committed_rows} (Expected: 1) | Total Refunded: INR {total_refunded:.2f} (Expected: INR {refund_amount:.2f})")
-    print(f"     Unique Refund IDs returned across {concurrency} clients: {len(returned_ids)} | All Successful: {all_success}")
-    print(f"     Tier Verdict: {'PASS' if tier_passed else 'FAIL'} (Duration: {tier_duration_ms:.2f}ms)")
+    print(
+        f"     Committed Rows: {committed_rows} (Expected: 1) | Total Refunded: INR {total_refunded:.2f} (Expected: INR {refund_amount:.2f})"
+    )
+    print(
+        f"     Unique Refund IDs returned across {concurrency} clients: {len(returned_ids)} | All Successful: {all_success}"
+    )
+    print(
+        f"     Tier Verdict: {'PASS' if tier_passed else 'FAIL'} (Duration: {tier_duration_ms:.2f}ms)"
+    )
 
     latencies = [r["latency_ms"] for r in worker_results]
     latencies.sort()
@@ -211,7 +252,9 @@ def test_restart_resilience(db_url: str, session_factory) -> dict:
 
     # Check database rows
     with session_factory() as session:
-        committed_rows = session.scalar(select(func.count(Refund.id)).where(Refund.idempotency_key == idempotency_key))
+        committed_rows = session.scalar(
+            select(func.count(Refund.id)).where(Refund.idempotency_key == idempotency_key)
+        )
 
     passed = (committed_rows == 1) and (initial_refund_id == post_refund_id) and res2["success"]
     print(f"     Restart Invariant: {'PASS' if passed else 'FAIL'}")
@@ -228,8 +271,14 @@ def test_restart_resilience(db_url: str, session_factory) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Verify PostgreSQL & Distributed Refund Idempotency")
-    parser.add_argument("--allow-sqlite", action="store_true", help="Allow running verification against SQLite for local simulation")
+    parser = argparse.ArgumentParser(
+        description="Verify PostgreSQL & Distributed Refund Idempotency"
+    )
+    parser.add_argument(
+        "--allow-sqlite",
+        action="store_true",
+        help="Allow running verification against SQLite for local simulation",
+    )
     args = parser.parse_args()
 
     database_url = os.getenv("DATABASE_URL", "sqlite:///./argvtix.db")
@@ -237,7 +286,9 @@ def main():
 
     print("=" * 75)
     print("Argvtix — Distributed Refund Idempotency Verification Suite")
-    print(f"Target Database Backend: {'SQLite (Local Simulation)' if is_sqlite else 'PostgreSQL (Staging/Production)'}")
+    print(
+        f"Target Database Backend: {'SQLite (Local Simulation)' if is_sqlite else 'PostgreSQL (Staging/Production)'}"
+    )
     print(f"Database URL: {database_url.split('@')[-1] if '@' in database_url else database_url}")
     print("=" * 75)
 
@@ -263,12 +314,16 @@ def main():
 
     restart_report = test_restart_resilience(database_url, SessionFactory)
 
-    all_passed = all(t["verdict"] == "PASS" for t in tier_reports) and (restart_report["verdict"] == "PASS")
+    all_passed = all(t["verdict"] == "PASS" for t in tier_reports) and (
+        restart_report["verdict"] == "PASS"
+    )
 
     audit_summary = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "execution_mode": "Local SQLite Simulation" if is_sqlite else "Live PostgreSQL Cluster",
-        "live_infrastructure_status": "BLOCKED (Host lacks Docker/PostgreSQL server)" if is_sqlite else "PASS (PostgreSQL active)",
+        "live_infrastructure_status": "BLOCKED (Host lacks Docker/PostgreSQL server)"
+        if is_sqlite
+        else "PASS (PostgreSQL active)",
         "database_backend": "SQLite WAL" if is_sqlite else "PostgreSQL 16+",
         "concurrency_tiers_tested": concurrency_levels,
         "tiers": tier_reports,
@@ -279,7 +334,7 @@ def main():
             "database_level_unique_constraint": "PASS",
             "multi_worker_contention_handling": "PASS",
             "live_multi_replica_postgres_server": "BLOCKED (Requires live PostgreSQL host)",
-        }
+        },
     }
 
     report_path = os.path.join(root_dir, "bench", "postgres_concurrency_report.json")

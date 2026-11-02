@@ -11,12 +11,13 @@ Monitors operational metrics:
 - P95 Latency spikes
 - Error trace frequency
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from enum import Enum
 import math
-from typing import Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from enum import Enum
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -32,13 +33,15 @@ class AnomalySeverity(str, Enum):
 
 class MetricDataPoint(BaseModel):
     """A single time-stamped metric observation."""
+
     metric_name: str
     value: float
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AnomalyIncident(BaseModel):
     """An identified anomalous spike or drop in an operational metric."""
+
     metric_name: str
     current_value: float
     baseline_mean: float
@@ -48,16 +51,17 @@ class AnomalyIncident(BaseModel):
     method: str  # "z_score" | "iqr"
     severity: AnomalySeverity
     reason: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AnomalyReport(BaseModel):
     """Aggregated anomaly report across sliding window observations."""
+
     total_points_analyzed: int
     anomalies_detected: int
     incidents: list[AnomalyIncident] = Field(default_factory=list)
     is_anomalous: bool = False
-    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AnomalyDetector:
@@ -129,7 +133,9 @@ class AnomalyDetector:
                     z_score=999.0,
                     threshold=self.z_threshold,
                     method="z_score",
-                    severity=AnomalySeverity.CRITICAL if current > mean * 2 else AnomalySeverity.WARNING,
+                    severity=AnomalySeverity.CRITICAL
+                    if current > mean * 2
+                    else AnomalySeverity.WARNING,
                     reason=f"Zero-variance baseline exceeded: {current:.2f} vs constant {mean:.2f}",
                 )
             return None
@@ -168,7 +174,9 @@ class AnomalyDetector:
 
         if current > upper_fence or current < lower_fence:
             mean, std = self.compute_stats(history)
-            severity = AnomalySeverity.CRITICAL if current > (q3 + 2.5 * iqr) else AnomalySeverity.WARNING
+            severity = (
+                AnomalySeverity.CRITICAL if current > (q3 + 2.5 * iqr) else AnomalySeverity.WARNING
+            )
             direction = "upper outlier" if current > upper_fence else "lower outlier"
             return AnomalyIncident(
                 metric_name=metric_name,
@@ -211,7 +219,7 @@ class AnomalyDetector:
 
             # Sliding window over the series
             for i in range(self.min_history_size, len(values)):
-                window = values[max(0, i - 20):i]
+                window = values[max(0, i - 20) : i]
                 current = values[i]
 
                 # Check Z-score first
@@ -245,20 +253,12 @@ class AnomalyDetector:
             total_orders = 0
 
         try:
-            refund_payments = (
-                db.query(Payment)
-                .filter(Payment.amount < 0)
-                .count()
-            )
+            refund_payments = db.query(Payment).filter(Payment.amount < 0).count()
         except Exception:
             refund_payments = 0
 
         try:
-            failed_traces = (
-                db.query(TraceRecord)
-                .filter(TraceRecord.status == "error")
-                .count()
-            )
+            failed_traces = db.query(TraceRecord).filter(TraceRecord.status == "error").count()
         except Exception:
             failed_traces = 0
 
@@ -272,15 +272,11 @@ class AnomalyDetector:
         data_points.append(
             MetricDataPoint(metric_name="refund_count", value=float(refund_payments))
         )
-        data_points.append(
-            MetricDataPoint(metric_name="order_count", value=float(total_orders))
-        )
+        data_points.append(MetricDataPoint(metric_name="order_count", value=float(total_orders)))
 
-        data_points.extend([
-            MetricDataPoint(metric_name="failed_traces", value=v) for v in history_failures
-        ])
-        data_points.append(
-            MetricDataPoint(metric_name="failed_traces", value=float(failed_traces))
+        data_points.extend(
+            [MetricDataPoint(metric_name="failed_traces", value=v) for v in history_failures]
         )
+        data_points.append(MetricDataPoint(metric_name="failed_traces", value=float(failed_traces)))
 
         return self.analyze_series(data_points)

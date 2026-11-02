@@ -6,6 +6,7 @@ Usage:
     python -m argvtix.evals.runner --workflow refund
     python -m argvtix.evals.runner --gate --threshold 5.0
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,7 +42,9 @@ def display_eval_summary(summary, title: str = "EVALUATION SUMMARY") -> None:
     print("  LANGUAGE BREAKDOWN:")
     for lang, metrics in summary.language_breakdown.items():
         lang_name = "English" if lang == "en" else ("Hindi" if lang == "hi" else "Hinglish")
-        print(f"    - {lang_name:<10} ({metrics.total:>2} cases): {metrics.accuracy_percent:>5.1f}% [{metrics.passed}/{metrics.total}]")
+        print(
+            f"    - {lang_name:<10} ({metrics.total:>2} cases): {metrics.accuracy_percent:>5.1f}% [{metrics.passed}/{metrics.total}]"
+        )
     print(_divider("-"))
     print("  WORKFLOW ACCURACY:")
     for wf, acc in summary.workflow_breakdown.items():
@@ -52,10 +55,21 @@ def display_eval_summary(summary, title: str = "EVALUATION SUMMARY") -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="ARGVTIX Evaluation & Regression Runner")
-    parser.add_argument("--summary", action="store_true", help="Run golden evaluation and display summary metrics")
-    parser.add_argument("--workflow", choices=["refund", "cancel", "balance", "inventory", "subscription", "general"], help="Filter by workflow")
+    parser.add_argument(
+        "--summary", action="store_true", help="Run golden evaluation and display summary metrics"
+    )
+    parser.add_argument(
+        "--workflow",
+        choices=["refund", "cancel", "balance", "inventory", "subscription", "general"],
+        help="Filter by workflow",
+    )
     parser.add_argument("--gate", action="store_true", help="Run automated CI regression gate")
-    parser.add_argument("--threshold", type=float, default=5.0, help="Max allowed drop percent for CI gate (default: 5.0)")
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=5.0,
+        help="Max allowed drop percent for CI gate (default: 5.0)",
+    )
     args = parser.parse_args()
 
     init_db()

@@ -16,23 +16,20 @@ Executes real end-to-end browser journeys using Playwright Chromium:
 from __future__ import annotations
 
 import json
-import os
 import socket
-import sys
 import threading
 import time
-import urllib.request
 import urllib.error
+import urllib.request
+
 import pytest
+import uvicorn
 from playwright.sync_api import sync_playwright
 
-import uvicorn
-from sqlalchemy.orm import Session
-
-from argvtix.gateway.app import app
+from argvtix.db.models import Customer, Order, Payment
 from argvtix.db.session import SessionLocal, init_db
-from argvtix.db.models import Customer, Order, Payment, Refund, ApprovalQueueRecord, TraceRecord
-from argvtix.security.auth import create_access_token, Role
+from argvtix.gateway.app import app
+from argvtix.security.auth import Role, create_access_token
 
 
 def find_free_port() -> int:
@@ -48,42 +45,137 @@ def seed_browser_test_data():
         # Seed Customer 1 & Order 1
         c1 = db.query(Customer).filter_by(id="c_browser_1").first()
         if not c1:
-            c1 = Customer(id="c_browser_1", name="Browser User One", email="b1@example.com", phone="+919876543210")
-            o1 = Order(id="o_browser_1", customer_id="c_browser_1", status="completed", subtotal=1000.0, tax=0.0, total_amount=1000.0)
-            p1 = Payment(id="p_browser_1", order_id="o_browser_1", customer_id="c_browser_1", amount=1000.0, status="succeeded")
+            c1 = Customer(
+                id="c_browser_1",
+                name="Browser User One",
+                email="b1@example.com",
+                phone="+919876543210",
+            )
+            o1 = Order(
+                id="o_browser_1",
+                customer_id="c_browser_1",
+                status="completed",
+                subtotal=1000.0,
+                tax=0.0,
+                total_amount=1000.0,
+            )
+            p1 = Payment(
+                id="p_browser_1",
+                order_id="o_browser_1",
+                customer_id="c_browser_1",
+                amount=1000.0,
+                status="succeeded",
+            )
             db.add_all([c1, o1, p1])
 
         # Seed VIP Customer & Order
         cvip = db.query(Customer).filter_by(id="c_browser_vip").first()
         if not cvip:
-            cvip = Customer(id="c_browser_vip", name="VIP Browser User", email="vip@example.com", phone="+919876543211")
-            ovip = Order(id="o_browser_vip", customer_id="c_browser_vip", status="completed", subtotal=50000.0, tax=0.0, total_amount=50000.0)
-            pvip = Payment(id="p_browser_vip", order_id="o_browser_vip", customer_id="c_browser_vip", amount=50000.0, status="succeeded")
+            cvip = Customer(
+                id="c_browser_vip",
+                name="VIP Browser User",
+                email="vip@example.com",
+                phone="+919876543211",
+            )
+            ovip = Order(
+                id="o_browser_vip",
+                customer_id="c_browser_vip",
+                status="completed",
+                subtotal=50000.0,
+                tax=0.0,
+                total_amount=50000.0,
+            )
+            pvip = Payment(
+                id="p_browser_vip",
+                order_id="o_browser_vip",
+                customer_id="c_browser_vip",
+                amount=50000.0,
+                status="succeeded",
+            )
             db.add_all([cvip, ovip, pvip])
 
         # Seed Fraud Customer & Order
         cfraud = db.query(Customer).filter_by(id="c_browser_fraud").first()
         if not cfraud:
-            cfraud = Customer(id="c_browser_fraud", name="Suspicious User", email="fraud@example.com", phone="+919876543212")
-            ofraud = Order(id="o_browser_fraud", customer_id="c_browser_fraud", status="completed", subtotal=50000.0, tax=0.0, total_amount=50000.0)
-            pfraud = Payment(id="p_browser_fraud", order_id="o_browser_fraud", customer_id="c_browser_fraud", amount=50000.0, status="succeeded")
+            cfraud = Customer(
+                id="c_browser_fraud",
+                name="Suspicious User",
+                email="fraud@example.com",
+                phone="+919876543212",
+            )
+            ofraud = Order(
+                id="o_browser_fraud",
+                customer_id="c_browser_fraud",
+                status="completed",
+                subtotal=50000.0,
+                tax=0.0,
+                total_amount=50000.0,
+            )
+            pfraud = Payment(
+                id="p_browser_fraud",
+                order_id="o_browser_fraud",
+                customer_id="c_browser_fraud",
+                amount=50000.0,
+                status="succeeded",
+            )
             db.add_all([cfraud, ofraud, pfraud])
 
         # Seed Replay Customer & Order
         creplay = db.query(Customer).filter_by(id="c_replay_test").first()
         if not creplay:
-            creplay = Customer(id="c_replay_test", name="Replay User", email="replay@example.com", phone="+919876543213")
-            oreplay = Order(id="o_replay_test", customer_id="c_replay_test", status="completed", subtotal=5000.0, tax=0.0, total_amount=5000.0)
-            preplay = Payment(id="p_replay_test", order_id="o_replay_test", customer_id="c_replay_test", amount=5000.0, status="succeeded")
+            creplay = Customer(
+                id="c_replay_test",
+                name="Replay User",
+                email="replay@example.com",
+                phone="+919876543213",
+            )
+            oreplay = Order(
+                id="o_replay_test",
+                customer_id="c_replay_test",
+                status="completed",
+                subtotal=5000.0,
+                tax=0.0,
+                total_amount=5000.0,
+            )
+            preplay = Payment(
+                id="p_replay_test",
+                order_id="o_replay_test",
+                customer_id="c_replay_test",
+                amount=5000.0,
+                status="succeeded",
+            )
             db.add_all([creplay, oreplay, preplay])
 
         # Seed Tenant Isolation Entities
         cvictim = db.query(Customer).filter_by(id="cust_tenant_victim").first()
         if not cvictim:
-            cvictim = Customer(id="cust_tenant_victim", name="Victim User", email="victim@example.com", phone="+919876543214")
-            ovictim = Order(id="o_victim_99", customer_id="cust_tenant_victim", status="completed", subtotal=2000.0, tax=0.0, total_amount=2000.0)
-            pvictim = Payment(id="p_victim_99", order_id="o_victim_99", customer_id="cust_tenant_victim", amount=2000.0, status="succeeded")
-            cattacker = Customer(id="cust_tenant_attacker", name="Attacker User", email="attacker@example.com", phone="+919876543215")
+            cvictim = Customer(
+                id="cust_tenant_victim",
+                name="Victim User",
+                email="victim@example.com",
+                phone="+919876543214",
+            )
+            ovictim = Order(
+                id="o_victim_99",
+                customer_id="cust_tenant_victim",
+                status="completed",
+                subtotal=2000.0,
+                tax=0.0,
+                total_amount=2000.0,
+            )
+            pvictim = Payment(
+                id="p_victim_99",
+                order_id="o_victim_99",
+                customer_id="cust_tenant_victim",
+                amount=2000.0,
+                status="succeeded",
+            )
+            cattacker = Customer(
+                id="cust_tenant_attacker",
+                name="Attacker User",
+                email="attacker@example.com",
+                phone="+919876543215",
+            )
             db.add_all([cvictim, ovictim, pvictim, cattacker])
 
         db.commit()
@@ -192,21 +284,27 @@ def test_journey_3_legitimate_refund_and_trace(browser_server, browser_context):
     # Trigger legitimate refund via Tool Gateway API (amount <= 10,000 is auto-approved)
     req = urllib.request.Request(
         f"{browser_server}/api/v1/guard/gateway/call",
-        data=json.dumps({
-            "tool_name": "issue_refund",
-            "params": {
-                "customer_id": "c_browser_1",
-                "order_id": "o_browser_1",
-                "amount": 450.0,
-                "reason": "Customer dissatisfied with size",
-            },
-            "idempotency_key": "idemp_b_legit_450"
-        }).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+        data=json.dumps(
+            {
+                "tool_name": "issue_refund",
+                "params": {
+                    "customer_id": "c_browser_1",
+                    "order_id": "o_browser_1",
+                    "amount": 450.0,
+                    "reason": "Customer dissatisfied with size",
+                },
+                "idempotency_key": "idemp_b_legit_450",
+            }
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
     )
     with urllib.request.urlopen(req) as resp:
         res = json.loads(resp.read().decode("utf-8"))
-        assert res.get("decision") in ("ALLOW", "allow") or res.get("status") in ("success", "executed") or res.get("success") is True
+        assert (
+            res.get("decision") in ("ALLOW", "allow")
+            or res.get("status") in ("success", "executed")
+            or res.get("success") is True
+        )
 
     # Inspect in browser Trace Explorer
     page = browser_context.new_page()
@@ -224,17 +322,19 @@ def test_journey_4_high_value_refund_approval(browser_server, browser_context):
     # Trigger high-value refund > ₹10,000 requiring human approval via Tool Gateway
     req = urllib.request.Request(
         f"{browser_server}/api/v1/guard/gateway/call",
-        data=json.dumps({
-            "tool_name": "issue_refund",
-            "params": {
-                "customer_id": "c_browser_vip",
-                "order_id": "o_browser_vip",
-                "amount": 15000.0,
-                "reason": "VIP laptop return",
-            },
-            "idempotency_key": f"idemp_vip_{int(time.time()*1000)}"
-        }).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+        data=json.dumps(
+            {
+                "tool_name": "issue_refund",
+                "params": {
+                    "customer_id": "c_browser_vip",
+                    "order_id": "o_browser_vip",
+                    "amount": 15000.0,
+                    "reason": "VIP laptop return",
+                },
+                "idempotency_key": f"idemp_vip_{int(time.time() * 1000)}",
+            }
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
     )
     with urllib.request.urlopen(req) as resp:
         res = json.loads(resp.read().decode("utf-8"))
@@ -253,7 +353,9 @@ def test_journey_4_high_value_refund_approval(browser_server, browser_context):
     assert page.locator(f"text={approval_id}").is_visible()
 
     # Click Authorize
-    authorize_btn = page.locator(f"div:has-text('{approval_id}') button:has-text('Authorize')").first
+    authorize_btn = page.locator(
+        f"div:has-text('{approval_id}') button:has-text('Authorize')"
+    ).first
     authorize_btn.click()
 
     # Verify notification toast/alert
@@ -269,17 +371,19 @@ def test_journey_5_high_risk_rejection(browser_server, browser_context):
     # Trigger another high-value refund requiring human approval via Tool Gateway
     req = urllib.request.Request(
         f"{browser_server}/api/v1/guard/gateway/call",
-        data=json.dumps({
-            "tool_name": "issue_refund",
-            "params": {
-                "customer_id": "c_browser_fraud",
-                "order_id": "o_browser_fraud",
-                "amount": 25000.0,
-                "reason": "Suspicious bulk claim",
-            },
-            "idempotency_key": f"idemp_fraud_{int(time.time()*1000)}"
-        }).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+        data=json.dumps(
+            {
+                "tool_name": "issue_refund",
+                "params": {
+                    "customer_id": "c_browser_fraud",
+                    "order_id": "o_browser_fraud",
+                    "amount": 25000.0,
+                    "reason": "Suspicious bulk claim",
+                },
+                "idempotency_key": f"idemp_fraud_{int(time.time() * 1000)}",
+            }
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
     )
     with urllib.request.urlopen(req) as resp:
         res = json.loads(resp.read().decode("utf-8"))
@@ -310,21 +414,28 @@ def test_journey_6_cross_tenant_idor_prevention(browser_server, browser_context)
     # Attempt cross-tenant refund where customer_id != order customer
     req = urllib.request.Request(
         f"{browser_server}/api/v1/guard/gateway/call",
-        data=json.dumps({
-            "tool_name": "issue_refund",
-            "params": {
-                "customer_id": "cust_tenant_attacker",
-                "order_id": "o_victim_99",
-                "amount": 500.0,
-                "reason": "IDOR exploit attempt",
-            },
-            "idempotency_key": "idemp_idor_attack"
-        }).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+        data=json.dumps(
+            {
+                "tool_name": "issue_refund",
+                "params": {
+                    "customer_id": "cust_tenant_attacker",
+                    "order_id": "o_victim_99",
+                    "amount": 500.0,
+                    "reason": "IDOR exploit attempt",
+                },
+                "idempotency_key": "idemp_idor_attack",
+            }
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
     )
     with urllib.request.urlopen(req) as resp:
         res = json.loads(resp.read().decode("utf-8"))
-        assert res.get("success") is False or res.get("decision") == "BLOCK" or "mismatch" in res.get("error", "").lower() or "belong" in res.get("error", "").lower()
+        assert (
+            res.get("success") is False
+            or res.get("decision") == "BLOCK"
+            or "mismatch" in res.get("error", "").lower()
+            or "belong" in res.get("error", "").lower()
+        )
 
     # Check Security Page in browser
     page = browser_context.new_page()
@@ -338,12 +449,25 @@ def test_journey_6_cross_tenant_idor_prevention(browser_server, browser_context)
 def test_journey_7_duplicate_refund_idempotency_browser(browser_server, browser_context):
     """Journey 7: Duplicate Refund Submission & Idempotency Visual Feedback."""
     token = create_access_token({"sub": "admin", "role": Role.ADMIN.value, "project_id": "default"})
-    shared_key = f"idemp_browser_replay_{int(time.time()*1000)}"
+    shared_key = f"idemp_browser_replay_{int(time.time() * 1000)}"
 
     # Seed fresh order for replay test
     with SessionLocal() as db:
-        o_rep = Order(id=f"o_rep_{int(time.time())}", customer_id="c_replay_test", status="completed", subtotal=5000.0, tax=0.0, total_amount=5000.0)
-        p_rep = Payment(id=f"p_rep_{int(time.time())}", order_id=o_rep.id, customer_id="c_replay_test", amount=5000.0, status="succeeded")
+        o_rep = Order(
+            id=f"o_rep_{int(time.time())}",
+            customer_id="c_replay_test",
+            status="completed",
+            subtotal=5000.0,
+            tax=0.0,
+            total_amount=5000.0,
+        )
+        p_rep = Payment(
+            id=f"p_rep_{int(time.time())}",
+            order_id=o_rep.id,
+            customer_id="c_replay_test",
+            amount=5000.0,
+            status="succeeded",
+        )
         db.add_all([o_rep, p_rep])
         db.commit()
         order_id = o_rep.id
@@ -352,17 +476,19 @@ def test_journey_7_duplicate_refund_idempotency_browser(browser_server, browser_
     for i in range(2):
         req = urllib.request.Request(
             f"{browser_server}/api/v1/guard/gateway/call",
-            data=json.dumps({
-                "tool_name": "issue_refund",
-                "params": {
-                    "customer_id": "c_replay_test",
-                    "order_id": order_id,
-                    "amount": 300.0,
-                    "reason": "Double click test",
-                },
-                "idempotency_key": shared_key
-            }).encode("utf-8"),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+            data=json.dumps(
+                {
+                    "tool_name": "issue_refund",
+                    "params": {
+                        "customer_id": "c_replay_test",
+                        "order_id": order_id,
+                        "amount": 300.0,
+                        "reason": "Double click test",
+                    },
+                    "idempotency_key": shared_key,
+                }
+            ).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
         )
         with urllib.request.urlopen(req) as resp:
             res = json.loads(resp.read().decode("utf-8"))
@@ -370,7 +496,12 @@ def test_journey_7_duplicate_refund_idempotency_browser(browser_server, browser_
                 assert res.get("status") in ("success", "executed") or res.get("success") is True
             else:
                 # Replay must be recognized as idempotent
-                assert res.get("cached") is True or res.get("idempotent") is True or res.get("success") is True or "already has a refund processed" in res.get("error", "")
+                assert (
+                    res.get("cached") is True
+                    or res.get("idempotent") is True
+                    or res.get("success") is True
+                    or "already has a refund processed" in res.get("error", "")
+                )
 
 
 def test_journey_8_claim_verification_in_browser(browser_server, browser_context):

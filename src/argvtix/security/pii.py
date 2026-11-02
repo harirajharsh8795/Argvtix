@@ -8,6 +8,7 @@ Domain-agnostic PII Sanitizer:
 - Extensible entity rules for domain-specific identifiers (Patient ABHA/MRN, Bank IFSC, UPI IDs).
 - Used by Gateway, Agent input pipelines, and Trace Store to ensure zero plain-text PII persistence.
 """
+
 from __future__ import annotations
 
 import re
@@ -17,6 +18,7 @@ from dataclasses import dataclass, field
 @dataclass
 class PIIEntity:
     """Details of a detected PII entity."""
+
     entity_type: str
     start: int
     end: int
@@ -27,6 +29,7 @@ class PIIEntity:
 @dataclass
 class MaskResult:
     """Result of a PII sanitization operation."""
+
     original_text: str
     masked_text: str
     entities: list[PIIEntity] = field(default_factory=list)
@@ -154,7 +157,7 @@ class PIIMasker:
 
         for ent in non_overlapping:
             if ent.start > curr_idx:
-                result_chars.append(text[curr_idx:ent.start])
+                result_chars.append(text[curr_idx : ent.start])
             result_chars.append(ent.replacement)
             curr_idx = ent.end
 

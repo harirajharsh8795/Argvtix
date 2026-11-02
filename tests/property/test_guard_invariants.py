@@ -90,7 +90,11 @@ class TestGuardInvariantsHypothesis:
             db.close()
 
     @settings(max_examples=50, deadline=None)
-    @given(fake_order_id=st.text(alphabet="abcdefghijklmnopqrstuvwxyz0123456789_-", min_size=1, max_size=30))
+    @given(
+        fake_order_id=st.text(
+            alphabet="abcdefghijklmnopqrstuvwxyz0123456789_-", min_size=1, max_size=30
+        )
+    )
     def test_invariant_nonexistent_order_always_blocked(self, fake_order_id: str) -> None:
         """
         Invariant 2: Any order_id that does not exist in the database MUST be BLOCKED.
@@ -116,7 +120,11 @@ class TestGuardInvariantsHypothesis:
             db.close()
 
     @settings(max_examples=50, deadline=None)
-    @given(wrong_customer_id=st.text(alphabet="abcdefghijklmnopqrstuvwxyz0123456789_-", min_size=1, max_size=30))
+    @given(
+        wrong_customer_id=st.text(
+            alphabet="abcdefghijklmnopqrstuvwxyz0123456789_-", min_size=1, max_size=30
+        )
+    )
     def test_invariant_customer_mismatch_always_blocked(self, wrong_customer_id: str) -> None:
         """
         Invariant 3: Any customer attempting to act on someone else's order MUST be BLOCKED.
@@ -204,7 +212,13 @@ class TestGuardInvariantsHypothesis:
         db.add(cust)
         order = Order(id=order_id, customer_id=cust_id, status="completed", total_amount=100000.0)
         db.add(order)
-        payment = Payment(id="pmt_high_1", order_id=order_id, customer_id=cust_id, amount=100000.0, status="succeeded")
+        payment = Payment(
+            id="pmt_high_1",
+            order_id=order_id,
+            customer_id=cust_id,
+            amount=100000.0,
+            status="succeeded",
+        )
         db.add(payment)
         db.commit()
 

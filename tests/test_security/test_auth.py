@@ -1,13 +1,14 @@
 """
 Tests for JWT Authentication, RBAC Roles, and Project Scoping.
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
 
+import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
-import pytest
 
 from argvtix.security.auth import (
     Role,

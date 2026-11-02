@@ -13,8 +13,6 @@ from __future__ import annotations
 
 import concurrent.futures
 import os
-import time
-from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -22,9 +20,8 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from argvtix.cache.manager import CacheManager, InMemoryLRUTTLCache, RedisCache
+from argvtix.cache.manager import InMemoryLRUTTLCache, RedisCache
 from argvtix.db.models import (
     Base,
     Customer,
@@ -32,26 +29,22 @@ from argvtix.db.models import (
     Payment,
     Refund,
 )
-from argvtix.db.session import init_db
 from argvtix.gateway.app import app, lifespan, verify_cloudflare_turnstile
-from argvtix.guard import ActionGuard, ApprovalQueue, ToolGateway
-from argvtix.guard.engine import GuardCheckRequest
+from argvtix.guard import ApprovalQueue, ToolGateway
 from argvtix.security.auth import (
     Role,
-    TokenPayload,
     create_access_token,
     get_jwt_secret_key,
     is_auth_enabled,
     verify_access_token,
-    verify_credentials,
 )
 from argvtix.target_app.tools import shop_tools
 from argvtix.trace.schemas import GuardDecision, Severity
 
-
 # ---------------------------------------------------------------------------
 # Test Fixtures: Isolated In-Memory Database
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def isolated_db_setup(tmp_path):
@@ -117,6 +110,7 @@ def isolated_db(isolated_db_setup):
 # PHASE 2 & 3: Database Concurrency & Atomic Idempotency Tests
 # ---------------------------------------------------------------------------
 
+
 def test_atomic_idempotency_concurrent_refunds(isolated_db_setup):
     """
     Critical Invariant:
@@ -150,12 +144,10 @@ def test_atomic_idempotency_concurrent_refunds(isolated_db_setup):
 
     # Critical Invariant Verification: Exactly ONE refund was committed in the database!
     with SessionFactory() as session:
-        refunds_in_db = (
-            session.query(Refund)
-            .filter(Refund.order_id == "ord_prod_audit")
-            .all()
+        refunds_in_db = session.query(Refund).filter(Refund.order_id == "ord_prod_audit").all()
+        assert len(refunds_in_db) == 1, (
+            f"Expected exactly 1 committed refund, found {len(refunds_in_db)}!"
         )
-        assert len(refunds_in_db) == 1, f"Expected exactly 1 committed refund, found {len(refunds_in_db)}!"
         assert refunds_in_db[0].idempotency_key == idempotency_key
 
 
@@ -221,6 +213,7 @@ def test_duplicate_refund_rejected_for_same_order(isolated_db):
 # PHASE 3: Redis Cache Resilient Fallback Tests
 # ---------------------------------------------------------------------------
 
+
 def test_redis_cache_fallback_when_offline():
     """Verify RedisCache safely degrades to local in-memory storage when offline."""
     fallback = InMemoryLRUTTLCache(maxsize=100)
@@ -255,6 +248,7 @@ def test_in_memory_lru_eviction():
 # PHASE 4: Authentication & Approval Security Tests
 # ---------------------------------------------------------------------------
 
+
 def test_jwt_role_hierarchy_and_tampering():
     """Verify JWT roles and signature validation."""
     token = create_access_token(user_id="operator_user", role=Role.OPERATOR)
@@ -285,7 +279,9 @@ def test_approval_queue_freeze_on_decision(isolated_db):
     assert record.status == "pending"
 
     # Approve once
-    approved_item, _ = queue.approve(record.id, reviewer_id="op_alice", notes="Verified invoice", db=isolated_db)
+    approved_item, _ = queue.approve(
+        record.id, reviewer_id="op_alice", notes="Verified invoice", db=isolated_db
+    )
     assert approved_item.status == "approved"
     assert approved_item.reviewer_id == "op_alice"
 
@@ -301,6 +297,7 @@ def test_approval_queue_freeze_on_decision(isolated_db):
 # ---------------------------------------------------------------------------
 # PHASE 5: Cloudflare Turnstile & Public Forms Tests
 # ---------------------------------------------------------------------------
+
 
 def test_turnstile_fail_closed_in_production():
     """Verify that in production mode, missing Turnstile secret causes fail-closed verification."""
@@ -334,36 +331,47 @@ def test_contact_form_honeypot_defense():
 # PHASE 6: Production Environment & Startup Invariants Tests
 # ---------------------------------------------------------------------------
 
+
 def test_production_rejects_sqlite_database_url():
     """
     Verify that in production mode, startup refuses to run if DATABASE_URL
     is pointing to SQLite instead of managed PostgreSQL.
     """
-    with patch.dict(os.environ, {"ENVIRONMENT": "production", "DATABASE_URL": "sqlite:///./argvtix.db"}, clear=False):
+    with patch.dict(
+        os.environ,
+        {"ENVIRONMENT": "production", "DATABASE_URL": "sqlite:///./argvtix.db"},
+        clear=False,
+    ):
         with pytest.raises(RuntimeError, match="CRITICAL PRODUCTION CONFIGURATION ERROR"):
             # Trigger lifespan validation
             import asyncio
+
             async def run():
                 async with lifespan(app):
                     pass
+
             asyncio.run(run())
 
 
 def test_production_enforces_auth_unconditionally():
     """Verify is_auth_enabled() returns True in production regardless of ARGVTIX_AUTH_ENABLED."""
-    with patch.dict(os.environ, {"ENVIRONMENT": "production", "ARGVTIX_AUTH_ENABLED": "false"}, clear=False):
+    with patch.dict(
+        os.environ, {"ENVIRONMENT": "production", "ARGVTIX_AUTH_ENABLED": "false"}, clear=False
+    ):
         assert is_auth_enabled() is True, "Production must enforce auth unconditionally!"
 
 
 def test_production_rejects_insecure_default_jwt_secret():
     """Verify get_jwt_secret_key() raises RuntimeError in production when using dev secrets."""
-    with patch.dict(
-        os.environ,
-        {
-            "ENVIRONMENT": "production",
-            "ARGVTIX_JWT_SECRET": "argvtix_enterprise_secret_dev_key_change_in_prod",
-        },
-        clear=False,
+    with (
+        patch.dict(
+            os.environ,
+            {
+                "ENVIRONMENT": "production",
+                "ARGVTIX_JWT_SECRET": "argvtix_enterprise_secret_dev_key_change_in_prod",
+            },
+            clear=False,
+        ),
+        pytest.raises(RuntimeError, match="insecure default secret"),
     ):
-        with pytest.raises(RuntimeError, match="insecure default secret"):
-            get_jwt_secret_key()
+        get_jwt_secret_key()

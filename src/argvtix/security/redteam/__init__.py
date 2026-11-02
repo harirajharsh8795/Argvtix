@@ -2,6 +2,7 @@
 Adversarial Red Teaming & Penetration Testing Module
 Enterprise AI Reliability Platform (ARGVTIX)
 """
+
 from argvtix.security.redteam.attacks import (
     AttackCategory,
     AttackVector,
