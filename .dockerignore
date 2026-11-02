@@ -1,0 +1,62 @@
+# Git & IDE
+.git/
+.gitignore
+.cursor/
+.agents/
+.idea/
+.vscode/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Local databases & caches
+*.db
+*.sqlite
+*.sqlite3
+argvtix.db
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# Frontend node_modules & build (built in separate stage or volume)
+ui/node_modules/
+ui/dist/
+ui/.vite/
+
+# Brain and scratch artifacts
+bench/*.json
+bench/*.log

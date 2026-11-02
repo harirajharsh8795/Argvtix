@@ -1,0 +1,10 @@
+{
+  "name": "argvtix-platform",
+  "version": "1.2.0",
+  "description": "Argvtix Enterprise AI Reliability Platform",
+  "private": true,
+  "scripts": {
+    "dev": "python run.py",
+    "start": "python run.py"
+  }
+}

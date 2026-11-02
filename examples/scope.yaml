@@ -1,0 +1,49 @@
+# ==============================================================================
+# Argvtix Scout Authorization & Scope Specification
+# Governed by Permission-First Audit Protocol (T0 / T1 / T2 / T3)
+# ==============================================================================
+
+scope_id: "AUD-2026-T1-001"
+project_id: "default"
+target_name: "ShopOps Retail Support Agent (Staging/Self-Hosted)"
+target_url: "http://127.0.0.1:8000/api/v1/agent/chat"
+target_tier: "T0_INTERNAL_SANDBOX"
+
+# Formal authorization details (Required for T1, T2, T3)
+written_authorization_id: "AUTH-2026-SHOPOPS-INTERNAL"
+signoff_contact_email: "security-audits@argvtix.ai"
+
+# Validity Time Window (ISO-8601 UTC)
+valid_from: "2026-10-01T00:00:00Z"
+valid_until: "2027-12-31T23:59:59Z"
+
+# Network & Egress Rules
+allowed_hosts:
+  - "127.0.0.1"
+  - "localhost"
+  - "app.argvtix.ai"
+allowed_paths:
+  - "/api/v1/agent/chat"
+  - "/chat"
+  - "/support"
+
+# Rate & Budget Safeguards
+max_rpm: 30
+max_conversations: 50
+max_turns_per_conversation: 6
+
+# Allowed Categories
+allowed_categories:
+  - "policy_fidelity"
+  - "hallucination"
+  - "canary_instructions"
+  - "cross_user_leakage"
+  - "adversarial_injection"
+  - "scope_handoff"
+
+# Prohibited actions
+forbidden:
+  - "load_test"
+  - "auth_bypass"
+  - "real_customer_data"
+  - "exploit_payloads"
