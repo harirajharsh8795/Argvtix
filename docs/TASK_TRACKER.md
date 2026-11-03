@@ -128,4 +128,17 @@
 | **PROD-007** | Live Multi-Process OS Concurrency Verification | P0 | `DONE` | `tests/test_multiprocess_concurrency.py` | Spawns multiple independent OS Python processes with separate heaps/interpreters against SQLite WAL | Pytest Subprocess Execution | 100% atomic idempotency; exactly 1 row committed across processes |
 | **BROWSER-001**| Real Browser Acceptance Test Suite (Playwright) | P0 | `DONE` | `tests/test_browser_acceptance.py` | 10 complete Playwright Chromium user journeys: login, nav, approvals, rejection, IDOR, claims, traces | Playwright Execution | 10/10 journeys passing in 11.10s |
 | **LOAD-003** | Live HTTP Load Benchmark & Performance Verification | P1 | `DONE` | `bench/load_test.py` | Live load profile execution against ASGI server; measures throughput, p50, p95, p99 | Benchmark Execution | 234.42 req/sec; p50=14.23ms; p95=80.90ms; 0 server 5xx errors |
-| **TEST-003** | Full Regression Test Suite Expansion to 403 Tests | P0 | `DONE` | `tests/` | Comprehensive test coverage across all subsystems | Pytest Execution | 403/403 passed green in 33.49s (100% pass rate) |
+| **TEST-003** | Full Regression Test Suite Expansion to 419 Tests | P0 | `DONE` | `tests/` | Comprehensive test coverage across all subsystems | Pytest Execution | 419/419 passed green (100% pass rate) |
+
+
+---
+
+## 10. Audit Remediation & Hardening (Steps 1 & 2)
+
+| Task ID | Task Title | Priority | Status | Files / Modules | Acceptance Criteria | Verification Method | Latest Update |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **SEC-006** | Complete Tenant Isolation & Cross-Project Scoping | P0 | `DONE` | `store.py`, `approvals.py`, `engine.py`, `app.py` | Enforce `project_id` filter across traces, approvals, watchdog findings, and stats; 404 on cross-tenant attempts | Pytest Execution (`test_step1_security_hardening.py`) | 4/4 cross-tenant leak tests passing |
+| **SEC-007** | Endpoint RBAC Enforcement & Token Request Hardening | P0 | `DONE` | `app.py`, `auth.py`, `.env.example` | Gate open endpoints (`/evals`, `/redteam`, `/security`, `/conflicts`, `/cache/metrics`) with `require_role`; reject default admin credentials in dev without opt-in | Automated Security Suite | 10/10 endpoints protected; dev opt-in verified |
+| **UI-001**  | Honest UI Metrics & Explicit Data Unavailable State | P1 | `DONE` | `ui/src/pages/`, `DataUnavailable.tsx` | Eliminate all hardcoded metrics (96.8%) and mock fallbacks (`mockTraces`, fake red team); display explicit DataUnavailable state with retry | TypeScript Build & UI Audit | `npm run build` green (0 errors) |
+| **BENCH-002**| Dynamic Benchmark Report Markdown Generation | P1 | `DONE` | `bench/runner.py`, `bench/report.md` | Generate `bench/report.md` dynamically from YAML cases and runner metrics; distribution table strictly matches data | Pytest Suite (`test_report_generation.py`) | 2/2 tests green; exact YAML case counts verified |
+| **DOC-007** | Test Counts, Rule Counts & Author Placeholder Alignment | P1 | `DONE` | `README.md`, `TASK_TRACKER.md`, `pyproject.toml` | Align test counts (419 passing), rule counts (6 Watchdog, 5 Guard policies), author name and remove Proofline references | Repo Audit & Pytest | 419/419 tests green (100%) |

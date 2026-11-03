@@ -113,10 +113,10 @@ export const EvalsPage: React.FC = () => {
             Claim Grounding Precision
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>
-            98.4%
+            {claimVerdict ? `${(claimVerdict.supported_ratio * 100).toFixed(1)}%` : '—'}
           </div>
           <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
-            Zero ungrounded status claims in prod
+            {claimVerdict ? `${claimVerdict.supported_claims ?? 0} of ${claimVerdict.total_claims ?? 0} claims grounded in DB` : 'Run Claim Verifier below'}
           </div>
         </div>
 
@@ -125,10 +125,10 @@ export const EvalsPage: React.FC = () => {
             Strict pass^3 Reliability
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f8fafc', marginTop: '8px' }}>
-            96.8%
+            {passKResult ? `${(passKResult.pass_hat_k ?? passKResult.pass_pow_k ?? 0).toFixed(1)}%` : '—'}
           </div>
           <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
-            All 3 runs pass (vs 100% loose pass@3)
+            {passKResult ? `Strict pass^k across ${passKResult.total_cases ?? 0} cases` : 'Run pass^k evaluation below'}
           </div>
         </div>
 
@@ -137,10 +137,10 @@ export const EvalsPage: React.FC = () => {
             Flake Rate Detected
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f59e0b', marginTop: '8px' }}>
-            1.7%
+            {passKResult ? `${(passKResult.flake_rate ?? 0).toFixed(1)}%` : '—'}
           </div>
           <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
-            Variance caught by k-trial loop
+            {passKResult ? 'Non-deterministic variance caught' : 'Awaiting trial execution'}
           </div>
         </div>
 
@@ -431,7 +431,7 @@ export const EvalsPage: React.FC = () => {
                       ? passKResult.pass_hat_k
                       : passKResult.pass_pow_k !== undefined
                       ? passKResult.pass_pow_k
-                      : 96.8
+                      : 0.0
                     ).toFixed(1)}%
                   </div>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>

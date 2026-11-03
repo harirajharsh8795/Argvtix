@@ -9,6 +9,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { DataUnavailable } from '../components/DataUnavailable';
 
 export const SecurityPage: React.FC = () => {
   // Red Team state
@@ -28,10 +29,12 @@ export const SecurityPage: React.FC = () => {
 
   // Inline Notification
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleRunRedTeam = async () => {
     setRunningRedTeam(true);
     setNotification(null);
+    setError(null);
     try {
       const res = await api.runRedTeam();
       setRedTeamResult(res);
@@ -39,25 +42,12 @@ export const SecurityPage: React.FC = () => {
         type: 'success',
         message: 'Red Team suite completed successfully. 40 of 40 adversarial vectors evaluated.',
       });
-    } catch {
-      // Graceful fallback to verified benchmark data
-      setRedTeamResult({
-        total_attacks: 40,
-        baseline_attack_success_rate: '95.0%',
-        protected_attack_success_rate: '0.0%',
-        defense_improvement: '+95.0%',
-        baseline_blocked: 2,
-        protected_blocked: 40,
-        category_breakdown: {
-          'Prompt Injections': { total: 10, baseline_blocked: 1, protected_blocked: 10, baseline_success_rate: '90.0%', protected_success_rate: '0.0%' },
-          'Privilege Escalations': { total: 8, baseline_blocked: 0, protected_blocked: 8, baseline_success_rate: '100.0%', protected_success_rate: '0.0%' },
-          'System Prompt Theft': { total: 12, baseline_blocked: 1, protected_blocked: 12, baseline_success_rate: '91.7%', protected_success_rate: '0.0%' },
-          'Multilingual Bypasses': { total: 10, baseline_blocked: 0, protected_blocked: 10, baseline_success_rate: '100.0%', protected_success_rate: '0.0%' },
-        },
-      });
+    } catch (err: any) {
+      setRedTeamResult(null);
+      setError(err?.message || 'Security service unavailable');
       setNotification({
-        type: 'success',
-        message: 'Red Team benchmark completed. Action Guard boundary blocked 100% of state-mutating exploits.',
+        type: 'error',
+        message: `Red Team execution failed: ${err?.response?.data?.detail || err?.message || 'Backend service unavailable'}`,
       });
     } finally {
       setRunningRedTeam(false);
@@ -70,14 +60,11 @@ export const SecurityPage: React.FC = () => {
     try {
       const res = await api.inspectDLP(dlpInput);
       setDlpResult(res);
-    } catch {
-      // Local robust Indian PII masking
-      setDlpResult({
-        sanitized_text: dlpInput
-          .replace(/\b\d{4}\s?\d{4}\s?\d{4}\b/g, '[AADHAAR-MASKED-XXXX]')
-          .replace(/\b[A-Z]{5}\d{4}[A-Z]\b/g, '[PAN-MASKED-XXXX]')
-          .replace(/\b\d{10}\b/g, '[PHONE-MASKED-XXXX]'),
-        entities_found: ['Aadhaar Number', 'PAN Card', 'Phone Number'],
+    } catch (err: any) {
+      setDlpResult(null);
+      setNotification({
+        type: 'error',
+        message: `DLP inspection failed: ${err?.response?.data?.detail || err?.message || 'Backend service unavailable'}`,
       });
     } finally {
       setInspectingDlp(false);
@@ -127,6 +114,14 @@ export const SecurityPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {error && (
+        <DataUnavailable
+          title="Security Service Unavailable"
+          message={error}
+          onRetry={handleRunRedTeam}
+        />
+      )}
 
       {/* Inline Notification Banner */}
       {notification && (

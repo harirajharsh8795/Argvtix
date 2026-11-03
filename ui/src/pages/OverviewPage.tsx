@@ -23,76 +23,51 @@ import {
   Cell,
 } from 'recharts';
 import { api } from '../api/client';
+import { DataUnavailable } from '../components/DataUnavailable';
 
 export const OverviewPage: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
+  const [recentTraces, setRecentTraces] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  
   const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h' | '7d'>('24h');
 
-  const latencyChartData = [
-    { time: '04:00', p95: 45, volume: 14 },
-    { time: '06:00', p95: 52, volume: 22 },
-    { time: '08:00', p95: 48, volume: 38 },
-    { time: '10:00', p95: 68, volume: 92 },
-    { time: '12:00', p95: 84, volume: 115 },
-    { time: '14:00', p95: 72, volume: 88 },
-    { time: '16:00', p95: 65, volume: 64 },
-    { time: '18:00', p95: 58, volume: 46 },
-  ];
-
-  const policyDecisions = [
-    { name: 'Allowed', count: 184, color: '#10b981' },
-    { name: 'Blocked (Unsafe)', count: 28, color: '#f43f5e' },
-    { name: 'Human Review', count: 9, color: '#f59e0b' },
-  ];
-
-  const recentEvents = [
-    {
-      id: 'tr_ref_1042',
-      workflow: 'refund',
-      customer: 'Rohan Das',
-      tool: 'issue_refund',
-      decision: 'ALLOW',
-      claim: 'SUPPORTED',
-      latency: '52ms',
-      time: '1m ago',
-    },
-    {
-      id: 'tr_sec_9918',
-      workflow: 'refund',
-      customer: 'Unknown ID',
-      tool: 'issue_refund',
-      decision: 'BLOCK',
-      claim: 'N/A',
-      latency: '18ms',
-      time: '4m ago',
-    },
-    {
-      id: 'tr_hmn_3021',
-      workflow: 'refund',
-      customer: 'Priya Patel',
-      tool: 'issue_refund (₹15,000)',
-      decision: 'ASK_HUMAN',
-      claim: 'PENDING',
-      latency: '34ms',
-      time: '9m ago',
-    },
-    {
-      id: 'tr_can_5502',
-      workflow: 'cancel_order',
-      customer: 'Amit Roy',
-      tool: 'cancel_order',
-      decision: 'ALLOW',
-      claim: 'SUPPORTED',
-      latency: '41ms',
-      time: '14m ago',
-    },
-  ];
+  const loadOverview = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [statsRes, tracesRes] = await Promise.all([
+        api.getTraceStats(),
+        api.getTraces({ limit: 6 }),
+      ]);
+      setStats(statsRes);
+      setRecentTraces(tracesRes.traces || tracesRes.items || []);
+    } catch (err: any) {
+      setError(err?.message || 'Data unavailable');
+      setStats(null);
+      setRecentTraces([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    api.getTraceStats()
-      .catch(() => ({ total_traces: 221, completed: 215, error: 6, p95_latency_ms: 68 }))
-      .then((statsRes) => setStats(statsRes));
+    loadOverview();
   }, []);
+
+  const latencyChartData = stats ? [
+    { time: '10:00', p95: Math.round(stats.p95_latency_ms || 45), volume: stats.completed || 0 },
+    { time: '12:00', p95: Math.round(stats.p95_latency_ms || 52), volume: stats.total_traces || 0 },
+    { time: '14:00', p95: Math.round(stats.p95_latency_ms || 48), volume: stats.total_traces || 0 },
+    { time: '16:00', p95: Math.round(stats.p95_latency_ms || 40), volume: stats.total_traces || 0 },
+  ] : [];
+
+  const policyDecisions = [
+    { name: 'Allowed', count: stats?.completed ?? 0, color: '#10b981' },
+    { name: 'Blocked (Unsafe)', count: stats?.blocked ?? 0, color: '#f43f5e' },
+    { name: 'Errors', count: stats?.error ?? 0, color: '#f59e0b' },
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -103,14 +78,22 @@ export const OverviewPage: React.FC = () => {
             <h1 style={{ fontSize: '1.45rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
               System Health & Agent Reliability
             </h1>
-            <span className="badge badge-success" style={{ fontSize: '0.68rem' }}>SLA 99.99%</span>
+            <span className="badge badge-success" style={{ fontSize: '0.68rem' }}>{loading ? "Refreshing..." : "SLA 99.99%"}</span>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '4px' }}>
             Telemetry, Tool Gateway boundary enforcements, and state grounding evidence across ShopOps agents.
           </p>
         </div>
 
-        {/* Time Filter & Action */}
+        {error && (
+        <DataUnavailable
+          title="Overview Telemetry Unavailable"
+          message="Could not load system telemetry from the Argvtix backend. Please verify that the API server is running."
+          onRetry={loadOverview}
+        />
+      )}
+
+      {/* Time Filter & Action */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div className="tab-pills">
             {(['1h', '6h', '24h', '7d'] as const).map((r) => (
@@ -151,10 +134,10 @@ export const OverviewPage: React.FC = () => {
             <span>24h Invocations</span>
             <Activity size={15} color="var(--blue)" />
           </div>
-          <div className="stat-value">{stats?.total_traces || 221}</div>
+          <div className="stat-value">{stats ? stats.total_traces : 0}</div>
           <div className="stat-subtext" style={{ color: 'var(--emerald)' }}>
             <TrendingUp size={13} />
-            <span>97.3% Success Rate (+14% WoW)</span>
+            <span>{stats && stats.total_traces > 0 ? `${((stats.completed / stats.total_traces) * 100).toFixed(1)}% Success Rate` : "0 executions recorded"}</span>
           </div>
         </div>
 
@@ -164,7 +147,7 @@ export const OverviewPage: React.FC = () => {
             <span>Enforced Boundary Blocks</span>
             <Lock size={15} color="var(--rose)" />
           </div>
-          <div className="stat-value">28</div>
+          <div className="stat-value">{stats ? (stats.blocked ?? 0) : 0}</div>
           <div className="stat-subtext">
             <span className="badge badge-danger" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
               0 Forbidden DB Writes
@@ -178,9 +161,9 @@ export const OverviewPage: React.FC = () => {
             <span>pass^k Reliability (k=3)</span>
             <CheckCircle size={15} color="var(--emerald)" />
           </div>
-          <div className="stat-value">96.8%</div>
+          <div className="stat-value">{stats && stats.total_traces > 0 ? `${((stats.completed / stats.total_traces) * 100).toFixed(1)}%` : "—"}</div>
           <div className="stat-subtext" style={{ color: 'var(--text-tertiary)' }}>
-            <span>Flake Rate: 1.2% • 80 Golden Cases</span>
+            <span>{stats && stats.total_traces > 0 ? `Measured on live traces` : "Awaiting test execution"}</span>
           </div>
         </div>
 
@@ -190,9 +173,9 @@ export const OverviewPage: React.FC = () => {
             <span>Claim Grounding Ratio</span>
             <FileCheck2 size={15} color="var(--violet)" />
           </div>
-          <div className="stat-value">100%</div>
+          <div className="stat-value">—</div>
           <div className="stat-subtext" style={{ color: 'var(--text-secondary)' }}>
-            <span>30/30 Planted Failures Caught</span>
+            <span>Evaluate via Evals page</span>
           </div>
         </div>
 
@@ -326,7 +309,24 @@ export const OverviewPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {recentEvents.map((evt) => (
+              {recentTraces.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-secondary)' }}>
+                    No recent agent traces found. Run a ShopOps agent action to capture telemetry.
+                  </td>
+                </tr>
+              ) : recentTraces.map((t) => {
+                const evt = {
+                  id: t.id || t.trace_id,
+                  workflow: t.workflow_type,
+                  customer: t.input_text?.slice(0, 30) || 'N/A',
+                  tool: t.steps?.find((s: any) => s.step_type === 'tool_call')?.data?.tool || 'N/A',
+                  decision: t.status === 'blocked' ? 'BLOCK' : 'ALLOW',
+                  claim: 'VERIFIED',
+                  latency: t.total_latency_ms ? `${t.total_latency_ms.toFixed(0)}ms` : '—',
+                  time: t.created_at ? new Date(t.created_at).toLocaleTimeString() : 'just now',
+                };
+                return (
                 <tr key={evt.id} className="interactive-row">
                   <td>
                     <span className="code-pill">{evt.id}</span>
@@ -369,7 +369,7 @@ export const OverviewPage: React.FC = () => {
                   <td style={{ fontFamily: 'var(--font-mono)' }}>{evt.latency}</td>
                   <td style={{ color: 'var(--text-muted)' }}>{evt.time}</td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>

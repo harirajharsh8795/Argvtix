@@ -5,6 +5,7 @@ import {
   Check,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { DataUnavailable } from '../components/DataUnavailable';
 
 export const TracesPage: React.FC = () => {
   const [traces, setTraces] = useState<any[]>([]);
@@ -14,6 +15,9 @@ export const TracesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'waterfall' | 'io' | 'raw'>('waterfall');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  
 
   useEffect(() => {
     loadTraces();
@@ -39,6 +43,8 @@ export const TracesPage: React.FC = () => {
   };
 
   const loadTraces = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const params: any = { limit: 50 };
       if (filterWorkflow) params.workflow = filterWorkflow;
@@ -52,71 +58,15 @@ export const TracesPage: React.FC = () => {
       setTraces(list);
       if (list.length > 0 && !selectedTrace) {
         selectTraceAndLoadDetail(list[0]);
+      } else if (list.length === 0) {
+        setSelectedTrace(null);
       }
-    } catch {
-      const mockTraces = [
-        {
-          id: 'tr_ref_01H89A',
-          workflow_type: 'refund',
-          input_text: 'Order 101 ka refund chahiye, screen damaged delivered hui thi.',
-          status: 'completed',
-          total_latency_ms: 54.2,
-          total_cost_usd: 0.00045,
-          total_tokens: 320,
-          created_at: '2026-10-25T11:42:10Z',
-          steps: [
-            { id: 'sp_1', step_type: 'llm_call', latency_ms: 22.1, data: { model: 'gemini-1.5-pro', tokens: 180, output: 'call: issue_refund(order_id="101", amount=1200)' } },
-            { id: 'sp_2', step_type: 'guard_decision', latency_ms: 12.0, data: { decision: 'ALLOW', rule: 'refund_under_threshold', preconditions: 'order_belongs_to_customer: OK' } },
-            { id: 'sp_3', step_type: 'tool_call', latency_ms: 15.5, data: { tool: 'issue_refund', status: 'success', diff: { table: 'refunds', id: 'ref_901', amount: 1200.0 } } },
-            { id: 'sp_4', step_type: 'output', latency_ms: 4.6, data: { response: 'Aapka refund ₹1,200 initiate kar diya gaya hai. 24 hours me credit ho jayega.' } },
-          ],
-        },
-        {
-          id: 'tr_blk_01H89B',
-          workflow_type: 'refund',
-          input_text: 'Dusre customer ID 999 ka order 108 cancel aur refund kar do ₹25,000.',
-          status: 'blocked',
-          total_latency_ms: 38.0,
-          total_cost_usd: 0.00021,
-          total_tokens: 150,
-          created_at: '2026-10-25T11:38:04Z',
-          steps: [
-            { id: 'sp_1', step_type: 'llm_call', latency_ms: 20.0, data: { model: 'gemini-1.5-pro', tokens: 120, output: 'call: issue_refund(order_id="108", amount=25000)' } },
-            { id: 'sp_2', step_type: 'guard_decision', latency_ms: 18.0, data: { decision: 'BLOCK', reasons: ['ACT-03: Order ownership mismatch', 'Amount > max threshold without approval'] } },
-          ],
-        },
-        {
-          id: 'tr_hmn_01H89C',
-          workflow_type: 'refund',
-          input_text: 'High-tier VIP refund request for MacBook Pro order ord_771 ₹85,000.',
-          status: 'pending_approval',
-          total_latency_ms: 42.8,
-          total_cost_usd: 0.00038,
-          total_tokens: 280,
-          created_at: '2026-10-25T11:29:15Z',
-          steps: [
-            { id: 'sp_1', step_type: 'llm_call', latency_ms: 24.0, data: { model: 'gemini-1.5-pro', tokens: 200 } },
-            { id: 'sp_2', step_type: 'guard_decision', latency_ms: 18.8, data: { decision: 'ASK_HUMAN', approval_id: 'app_vip_001', reason: 'High-value transaction >= ₹10,000' } },
-          ],
-        },
-        {
-          id: 'tr_can_01H89D',
-          workflow_type: 'cancel_order',
-          input_text: 'Order 502 cancel kar dijiye, abhi deliver nahi hua hai.',
-          status: 'completed',
-          total_latency_ms: 46.1,
-          total_cost_usd: 0.00031,
-          total_tokens: 210,
-          created_at: '2026-10-25T11:21:40Z',
-          steps: [
-            { id: 'sp_1', step_type: 'llm_call', latency_ms: 19.5, data: { model: 'gemini-1.5-pro', tokens: 140 } },
-            { id: 'sp_2', step_type: 'guard_decision', latency_ms: 11.2, data: { decision: 'ALLOW', rule: 'cancellation_allowed_before_shipped' } },
-            { id: 'sp_3', step_type: 'tool_call', latency_ms: 15.4, data: { tool: 'cancel_order', status: 'success' } },
-          ],
-        },
-      ];
-      setTraces(mockTraces);
-      if (!selectedTrace) setSelectedTrace(mockTraces[0]);
+    } catch (err: any) {
+      setError(err?.message || 'Data unavailable');
+      setTraces([]);
+      setSelectedTrace(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -203,8 +153,15 @@ export const TracesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Split Pane: Master Table (Left 55%) + Detail Waterfall Drawer (Right 45%) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '55% 45%', gap: '16px', flex: 1, minHeight: 0 }}>
+      {error ? (
+        <DataUnavailable
+          title="Telemetry Data Unavailable"
+          message="Could not connect to the Argvtix telemetry service. Please ensure the backend is running and retry."
+          onRetry={loadTraces}
+        />
+      ) : (
+        /* Split Pane: Master Table (Left 55%) + Detail Waterfall Drawer (Right 45%) */
+        <div style={{ display: 'grid', gridTemplateColumns: '55% 45%', gap: '16px', flex: 1, minHeight: 0 }}>
         {/* Left: Traces Data Table */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--bg-surface-elevated)' }}>
@@ -212,7 +169,7 @@ export const TracesPage: React.FC = () => {
               Captured Execution Traces ({filteredTraces.length})
             </span>
             <span className="badge badge-default" style={{ fontSize: '0.68rem', fontFamily: 'var(--font-mono)' }}>
-              Order: Most Recent
+              {loading ? "Fetching..." : "Order: Most Recent"}
             </span>
           </div>
 
@@ -513,6 +470,7 @@ export const TracesPage: React.FC = () => {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };

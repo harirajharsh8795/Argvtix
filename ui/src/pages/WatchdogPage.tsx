@@ -7,6 +7,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { DataUnavailable } from '../components/DataUnavailable';
 
 export const WatchdogPage: React.FC = () => {
   const [findings, setFindings] = useState<any[]>([]);
@@ -20,16 +21,21 @@ export const WatchdogPage: React.FC = () => {
     loadAll();
   }, []);
 
+  const [error, setError] = useState<string | null>(null);
+
   const loadAll = async () => {
+    setError(null);
     try {
       const [fData, aData] = await Promise.all([
-        api.getWatchdogFindings().catch(() => ({ findings: [] })),
-        api.getAnomalyReport().catch(() => ({ total_points_analyzed: 450, is_anomalous: false, incidents: [] })),
+        api.getWatchdogFindings(),
+        api.getAnomalyReport(),
       ]);
       setFindings(fData.findings || []);
       setAnomalyReport(aData);
-    } catch {
-      // ignore
+    } catch (err: any) {
+      setError(err?.message || 'Data unavailable');
+      setFindings([]);
+      setAnomalyReport(null);
     }
   };
 
@@ -48,17 +54,11 @@ export const WatchdogPage: React.FC = () => {
         message: 'Reconciliation audit completed. Verified records against ERP fulfillment and CRM billing ledgers.',
       });
       loadAll();
-    } catch {
-      // Graceful fallback
-      setReconcileResult({
-        is_synchronized: true,
-        total_entities_checked: 3,
-        total_discrepancies: 0,
-        status: 'SYNCHRONIZED',
-      });
+    } catch (err: any) {
+      setReconcileResult(null);
       setNotification({
-        type: 'success',
-        message: 'Reconciliation complete. All agent DB records match external ERP/CRM ledgers.',
+        type: 'error',
+        message: `Reconciliation audit failed: ${err?.response?.data?.detail || err?.message || 'Backend service unavailable'}`,
       });
     } finally {
       setScanning(false);
@@ -104,6 +104,14 @@ export const WatchdogPage: React.FC = () => {
           <span>{scanning ? 'Auditing Ledgers...' : 'Run Cross-System Reconciliation'}</span>
         </button>
       </div>
+
+      {error && (
+        <DataUnavailable
+          title="Watchdog Telemetry Unavailable"
+          message="Could not load database integrity metrics. Please check that the Argvtix backend is running."
+          onRetry={loadAll}
+        />
+      )}
 
       {/* Inline Notification Banner */}
       {notification && (

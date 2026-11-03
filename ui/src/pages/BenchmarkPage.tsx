@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { LiveFeed } from '../components/LiveFeed';
+import { DataUnavailable } from '../components/DataUnavailable';
+import { api } from '../api/client';
 import {
   Cpu,
   Play,
@@ -220,12 +222,16 @@ export function BenchmarkPage() {
     setError(null);
 
     try {
-      const tokenRes = await fetch('/api/v1/auth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'admin', password: 'admin', project_id: 'default', role: 'admin' }),
-      });
-      const { access_token } = await tokenRes.json();
+      let token = localStorage.getItem('argvtix_token');
+      if (!token) {
+        try {
+          const authRes = await api.devLoginAsOperator();
+          token = authRes?.access_token || localStorage.getItem('argvtix_token');
+        } catch {
+          // fallback to unauthenticated request
+        }
+      }
+      const access_token = token || '';
 
       const res = await fetch('/api/v1/benchmarks/run', {
         method: 'POST',
@@ -270,6 +276,14 @@ export function BenchmarkPage() {
           </p>
         </div>
       </div>
+
+      {error && (
+        <DataUnavailable
+          title="Benchmark Evaluation Failed"
+          message={`Unable to execute benchmark run: ${error}`}
+          onRetry={runBenchmark}
+        />
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '24px' }}>
         {/* Left: Configuration Panel */}

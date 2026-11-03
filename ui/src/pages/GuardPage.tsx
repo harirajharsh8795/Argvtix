@@ -13,6 +13,7 @@ import {
   Sliders,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { DataUnavailable } from '../components/DataUnavailable';
 
 interface PolicyRule {
   id: string;
@@ -77,6 +78,7 @@ export const GuardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'pending' | 'settled'>('pending');
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(api.isAuthenticated());
 
@@ -114,53 +116,13 @@ export const GuardPage: React.FC = () => {
 
   const loadApprovals = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await api.getApprovals(activeTab === 'pending' ? 'pending' : undefined);
       setApprovals(data.approvals || []);
-    } catch {
-      // Fallback realistic enterprise items
-      setApprovals([
-        {
-          id: 'appr_80419',
-          trace_id: 'tr_9b82f0c1',
-          action_type: 'issue_refund',
-          tool_name: 'issue_refund',
-          entity_id: 'ord_103',
-          customer_id: 'cust_003',
-          amount: 18500.0,
-          status: 'pending',
-          risk_level: 'high',
-          guard_reasons: 'POL-001 violation: Refund amount ₹18,500.00 exceeds max autonomous policy cap (₹10,000.00)',
-          created_at: new Date().toISOString(),
-          operator: null,
-          payload: {
-            order_id: 'ord_103',
-            amount: 18500.0,
-            currency: 'INR',
-            reason: 'Transit structural damage reported by courier',
-            destination_wallet: 'cust_003_main',
-          },
-        },
-        {
-          id: 'appr_80420',
-          trace_id: 'tr_11fa4e82',
-          action_type: 'cancel_order',
-          tool_name: 'cancel_order',
-          entity_id: 'ord_109',
-          customer_id: 'cust_009',
-          amount: 12000.0,
-          status: 'pending',
-          risk_level: 'critical',
-          guard_reasons: 'POL-004 violation: High-value cancellation (₹12,000.00) requires human supervisor confirmation',
-          created_at: new Date(Date.now() - 3600000).toISOString(),
-          operator: null,
-          payload: {
-            order_id: 'ord_109',
-            reason: 'Customer requested cancellation via Hinglish voice agent',
-            inventory_release: true,
-          },
-        },
-      ]);
+    } catch (err: any) {
+      setError(err?.message || 'Data unavailable');
+      setApprovals([]);
     } finally {
       setLoading(false);
     }
@@ -416,13 +378,21 @@ export const GuardPage: React.FC = () => {
             Autonomous Escalation Rate
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#38bdf8', marginTop: '8px' }}>
-            3.2%
+            {approvals.length}
           </div>
           <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
-            96.8% autonomous pass-through
+            {approvals.length > 0 ? `${approvals.filter(a => a.status === 'pending').length} pending human sign-off` : 'Zero pending approvals'}
           </div>
         </div>
       </div>
+
+      {error && (
+        <DataUnavailable
+          title="Approvals Queue Unavailable"
+          message="Could not load pending escalation requests from the Argvtix Guard service. Please verify the backend is running."
+          onRetry={loadApprovals}
+        />
+      )}
 
       {/* Main Content: Pending Review Table & Policy Engine Rules */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>

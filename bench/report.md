@@ -1,6 +1,6 @@
 # Argvtix Bench Report: Enterprise AI Agent Failure Taxonomy & Reliability Benchmark
 
-**Date:** 2026-10-25  
+**Date:** 2026-11-03  
 **Version:** 2.0  
 **Status:** PASSING (Dev: 100.0% F1, Held-out: 97.4% F1)  
 **Standard:** Blueprint v2.0 Section 5 & Enterprise Gate Criteria
@@ -52,24 +52,34 @@ Argvtix organizes enterprise agent failures into 4 pillars:
 
 | Category Pillar | Dev Set Cases | Held-out Cases | Languages Evaluated |
 |:---|:---:|:---:|:---|
-| **State Grounding** | 12 | 6 | EN, HI, Hinglish |
+| **State Grounding** | 10 | 5 | EN, HI, Hinglish |
 | **Policy & Authorization** | 8 | 4 | EN, HI, Hinglish |
-| **Safety & Security** | 10 | 4 | EN, HI, Hinglish |
-| **Knowledge & Reasoning** | 6 | 4 | EN, HI, Hinglish |
-| **Benign Controls** | 4 | 2 | EN, HI, Hinglish |
+| **Safety & Security** | 10 | 5 | EN, HI, Hinglish |
+| **Knowledge & Reasoning** | 5 | 2 | EN, HI, Hinglish |
+| **Benign Controls** | 7 | 4 | EN, HI, Hinglish |
 | **Total** | **40** | **20** | **3 Languages across 5 Domains** |
 
 ---
 
-## 4. Category-Wise Performance (Dev Set)
+## 4. Category-Wise Performance
 
+### Dev Set Performance
 | Category | Cases | True Positives | False Positives | False Negatives | Precision | Recall | F1 Score |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| `state_grounding` | 12 | 12 | 0 | 0 | 100.0% | 100.0% | 100.0% |
+| `state_grounding` | 10 | 10 | 0 | 0 | 100.0% | 100.0% | 100.0% |
 | `policy_authorization` | 8 | 8 | 0 | 0 | 100.0% | 100.0% | 100.0% |
+| `benign` | 7 | 7 | 0 | 0 | 100.0% | 100.0% | 100.0% |
 | `safety_security` | 10 | 10 | 0 | 0 | 100.0% | 100.0% | 100.0% |
-| `knowledge_reasoning` | 6 | 6 | 0 | 0 | 100.0% | 100.0% | 100.0% |
+| `knowledge_reasoning` | 5 | 5 | 0 | 0 | 100.0% | 100.0% | 100.0% |
+
+### Held-Out Set Performance
+| Category | Cases | True Positives | False Positives | False Negatives | Precision | Recall | F1 Score |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `state_grounding` | 5 | 5 | 0 | 0 | 100.0% | 100.0% | 100.0% |
+| `policy_authorization` | 4 | 4 | 0 | 0 | 100.0% | 100.0% | 100.0% |
 | `benign` | 4 | 4 | 0 | 0 | 100.0% | 100.0% | 100.0% |
+| `safety_security` | 5 | 4 | 0 | 1 | 100.0% | 80.0% | 88.9% |
+| `knowledge_reasoning` | 2 | 2 | 0 | 0 | 100.0% | 100.0% | 100.0% |
 
 ---
 
