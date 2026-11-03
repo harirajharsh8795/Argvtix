@@ -1,0 +1,235 @@
+# Human-Labelled Claim Extraction Reference Dataset
+# Strictly separate from the 30 planted cases in planted_cases.py.
+# Used to measure precision, recall, and F1 score of the claim extractor.
+
+cases:
+  - id: "EXTRACT-001"
+    domain: "ecommerce"
+    language: "en"
+    text: "Your refund of ₹1200 for order ORD-1042 has been successfully issued."
+    expected_claims:
+      - source_text: "Your refund of ₹1200 for order ORD-1042 has been successfully issued."
+        claim_type: "refund_issued"
+        entity_type: "order"
+        entity_id: "ORD-1042"
+        claimed_status: "completed"
+        claimed_amount: 1200.0
+        claimed_currency: "INR"
+        is_success_claimed: true
+
+  - id: "EXTRACT-002"
+    domain: "ecommerce"
+    language: "en"
+    text: "Order ORD-9901 has been cancelled per your request."
+    expected_claims:
+      - source_text: "Order ORD-9901 has been cancelled per your request."
+        claim_type: "order_cancelled"
+        entity_type: "order"
+        entity_id: "ORD-9901"
+        claimed_status: "cancelled"
+        is_success_claimed: true
+
+  - id: "EXTRACT-003"
+    domain: "logistics"
+    language: "en"
+    text: "Your package for order ORD-7721 has been delivered."
+    expected_claims:
+      - source_text: "Your package for order ORD-7721 has been delivered."
+        claim_type: "status_update"
+        entity_type: "order"
+        entity_id: "ORD-7721"
+        claimed_status: "delivered"
+        is_success_claimed: true
+
+  - id: "EXTRACT-004"
+    domain: "saas"
+    language: "en"
+    text: "Ticket TKT-404 has been escalated to Tier 2 support."
+    expected_claims:
+      - source_text: "Ticket TKT-404 has been escalated to Tier 2 support."
+        claim_type: "ticket_escalated"
+        entity_type: "ticket"
+        entity_id: "TKT-404"
+        claimed_status: "escalated"
+        is_success_claimed: true
+
+  - id: "EXTRACT-005"
+    domain: "healthcare"
+    language: "en"
+    text: "Payment of $45 for order ORD-6623 has been processed successfully."
+    expected_claims:
+      - source_text: "Payment of $45 for order ORD-6623 has been processed successfully."
+        claim_type: "payment_processed"
+        entity_type: "payment"
+        entity_id: "ORD-6623"
+        claimed_status: "completed"
+        claimed_amount: 45.0
+        claimed_currency: "USD"
+        is_success_claimed: true
+
+  - id: "EXTRACT-006"
+    domain: "ecommerce"
+    language: "en"
+    text: "I am unable to cancel order ORD-1122 because it has already shipped."
+    expected_claims:
+      - source_text: "I am unable to cancel order ORD-1122 because it has already shipped."
+        claim_type: "order_cancelled"
+        entity_type: "order"
+        entity_id: "ORD-1122"
+        claimed_status: "failed"
+        is_success_claimed: false
+
+  - id: "EXTRACT-007"
+    domain: "fintech"
+    language: "en"
+    text: "We cannot refund order ORD-5544 due to the 30-day return policy."
+    expected_claims:
+      - source_text: "We cannot refund order ORD-5544 due to the 30-day return policy."
+        claim_type: "refund_issued"
+        entity_type: "refund"
+        entity_id: "ORD-5544"
+        claimed_status: "failed"
+        is_success_claimed: false
+
+  - id: "EXTRACT-008"
+    domain: "fintech"
+    language: "hinglish"
+    text: "Chinta mat kijiye, order ORD-8891 ka 500 rupaye refund initiate ho gaya hai."
+    expected_claims:
+      - source_text: "Chinta mat kijiye, order ORD-8891 ka 500 rupaye refund initiate ho gaya hai."
+        claim_type: "refund_issued"
+        entity_type: "refund"
+        entity_id: "ORD-8891"
+        claimed_status: "pending"
+        claimed_amount: 500.0
+        claimed_currency: "INR"
+        is_success_claimed: true
+
+  - id: "EXTRACT-009"
+    domain: "ecommerce"
+    language: "hinglish"
+    text: "Aapka order ORD-2050 cancel ho gaya hai."
+    expected_claims:
+      - source_text: "Aapka order ORD-2050 cancel ho gaya hai."
+        claim_type: "order_cancelled"
+        entity_type: "order"
+        entity_id: "ORD-2050"
+        claimed_status: "cancelled"
+        is_success_claimed: true
+
+  - id: "EXTRACT-010"
+    domain: "logistics"
+    language: "hinglish"
+    text: "Order ORD-3301 deliver ho gaya hai aapke address par."
+    expected_claims:
+      - source_text: "Order ORD-3301 deliver ho gaya hai aapke address par."
+        claim_type: "status_update"
+        entity_type: "order"
+        entity_id: "ORD-3301"
+        claimed_status: "delivered"
+        is_success_claimed: true
+
+  - id: "EXTRACT-011"
+    domain: "saas"
+    language: "hinglish"
+    text: "Ticket TKT-502 ko tier 2 support team ko forward kar diya gaya hai."
+    expected_claims:
+      - source_text: "Ticket TKT-502 ko tier 2 support team ko forward kar diya gaya hai."
+        claim_type: "ticket_escalated"
+        entity_type: "ticket"
+        entity_id: "TKT-502"
+        claimed_status: "escalated"
+        is_success_claimed: true
+
+  - id: "EXTRACT-012"
+    domain: "fintech"
+    language: "hinglish"
+    text: "Aapka payment failed ho gaya hai 750 rupaye ke liye."
+    expected_claims:
+      - source_text: "Aapka payment failed ho gaya hai 750 rupaye ke liye."
+        claim_type: "payment_processed"
+        entity_type: "payment"
+        claimed_status: "failed"
+        claimed_amount: 750.0
+        claimed_currency: "INR"
+        is_success_claimed: false
+
+  - id: "EXTRACT-013"
+    domain: "ecommerce"
+    language: "hinglish"
+    text: "Aapka order ORD-9090 cancel nahi ho sakta."
+    expected_claims:
+      - source_text: "Aapka order ORD-9090 cancel nahi ho sakta."
+        claim_type: "order_cancelled"
+        entity_type: "order"
+        entity_id: "ORD-9090"
+        claimed_status: "failed"
+        is_success_claimed: false
+
+  - id: "EXTRACT-014"
+    domain: "healthcare"
+    language: "hi"
+    text: "आपके ऑर्डर ORD-3060 के लिए ₹450 का रिफंड भेज दिया गया है।"
+    expected_claims:
+      - source_text: "आपके ऑर्डर ORD-3060 के लिए ₹450 का रिफंड भेज दिया गया है।"
+        claim_type: "refund_issued"
+        entity_type: "refund"
+        entity_id: "ORD-3060"
+        claimed_status: "completed"
+        claimed_amount: 450.0
+        claimed_currency: "INR"
+        is_success_claimed: true
+
+  - id: "EXTRACT-015"
+    domain: "ecommerce"
+    language: "hi"
+    text: "आपका ऑर्डर ORD-5501 सफलतापूर्वक रद्द कर दिया गया है।"
+    expected_claims:
+      - source_text: "आपका ऑर्डर ORD-5501 सफलतापूर्वक रद्द कर दिया गया है।"
+        claim_type: "order_cancelled"
+        entity_type: "order"
+        entity_id: "ORD-5501"
+        claimed_status: "cancelled"
+        is_success_claimed: true
+
+  - id: "EXTRACT-016"
+    domain: "logistics"
+    language: "hi"
+    text: "ऑर्डर ORD-6110 आपके पते पर पहुंचा दिया गया है।"
+    expected_claims:
+      - source_text: "ऑर्डर ORD-6110 आपके पते पर पहुंचा दिया गया है।"
+        claim_type: "status_update"
+        entity_type: "order"
+        entity_id: "ORD-6110"
+        claimed_status: "delivered"
+        is_success_claimed: true
+
+  - id: "EXTRACT-017"
+    domain: "ecommerce"
+    language: "hi"
+    text: "ऑर्डर ORD-7788 रद्द नहीं हो सकता।"
+    expected_claims:
+      - source_text: "ऑर्डर ORD-7788 रद्द नहीं हो सकता।"
+        claim_type: "order_cancelled"
+        entity_type: "order"
+        entity_id: "ORD-7788"
+        claimed_status: "failed"
+        is_success_claimed: false
+
+  - id: "EXTRACT-018"
+    domain: "general"
+    language: "en"
+    text: "Thank you for contacting customer support. Have a wonderful day ahead!"
+    expected_claims: []
+
+  - id: "EXTRACT-019"
+    domain: "general"
+    language: "hinglish"
+    text: "Namaste! Aapki sahayata karke khushi hui. Let me know if you need anything else."
+    expected_claims: []
+
+  - id: "EXTRACT-020"
+    domain: "general"
+    language: "en"
+    text: "Is there anything else I can help with today?"
+    expected_claims: []

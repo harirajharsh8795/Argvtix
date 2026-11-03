@@ -13,6 +13,7 @@ Detects 6 critical hallucination & discrepancy categories:
 """
 
 from argvtix.evals.claims.extractor import ClaimExtractor
+from argvtix.evals.claims.labelled_dataset import LabelledClaimCase, load_labelled_claims
 from argvtix.evals.claims.planted_cases import PlantedScenario, get_planted_cases
 from argvtix.evals.claims.schemas import (
     Claim,
@@ -39,6 +40,8 @@ __all__ = [
     "EntityStateSnapshot",
     "EvidenceBundle",
     "ExtractionAccuracyReport",
+    "LabelledClaimCase",
     "PlantedScenario",
     "get_planted_cases",
+    "load_labelled_claims",
 ]

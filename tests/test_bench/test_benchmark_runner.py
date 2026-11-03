@@ -69,7 +69,7 @@ class TestBenchmarkDatasets:
     def test_load_held_out_set(self):
         runner = BenchmarkRunner()
         cases = runner.load_cases("held_out")
-        assert len(cases) == 20
+        assert len(cases) >= 60
         assert all(isinstance(c, BenchmarkCase) for c in cases)
 
     def test_load_invalid_split_raises(self):
@@ -97,7 +97,7 @@ class TestBenchmarkRunner:
         report: BenchmarkReport = runner.run("held_out")
 
         assert report.split == "held_out"
-        assert report.total_cases == 20
+        assert report.total_cases >= 60
         assert report.overall_accuracy >= 85.0
         assert report.passes_gate is True
 

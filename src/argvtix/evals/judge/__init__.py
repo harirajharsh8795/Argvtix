@@ -2,7 +2,7 @@
 LLM Judge Calibration & Injection Defence Subsystem.
 """
 
-from argvtix.evals.judge.calibrator import JudgeCalibrator
+from argvtix.evals.judge.calibrator import JudgeCalibrator, MockJudgeAdapter
 from argvtix.evals.judge.injection_defence import JudgeInjectionDefence
 from argvtix.evals.judge.schemas import (
     JudgeCalibrationResult,
@@ -16,4 +16,5 @@ __all__ = [
     "JudgeInjectionDefence",
     "JudgeRubric",
     "JudgeVerdict",
+    "MockJudgeAdapter",
 ]

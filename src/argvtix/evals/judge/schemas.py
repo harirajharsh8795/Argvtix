@@ -3,7 +3,7 @@ LLM Judge Data Models and Schemas (MISSING-01).
 
 Defines:
 - JudgeRubric: Scoring dimensions and weights
-- JudgeVerdict: Output of judge evaluation with dimensional scoring and injection checks
+- JudgeVerdict: Output of judge evaluation with dimensional scoring, injection checks, and assessment mode
 - JudgeCalibrationResult: Cohen's Kappa agreement metric vs human gold standard
 """
 
@@ -40,6 +40,14 @@ class JudgeVerdict(BaseModel):
     is_injection_suspected: bool = Field(default=False)
     injection_details: str | None = Field(default=None)
     penalties_applied: list[str] = Field(default_factory=list)
+    assessment_mode: str = Field(
+        default="judge-assessed",
+        description="Assessment mode: 'judge-assessed' or 'mock-assessed'",
+    )
+    is_mock: bool = Field(
+        default=False,
+        description="True if evaluated by a mock judge rather than a real LLM",
+    )
 
 
 class CalibrationCase(BaseModel):
@@ -66,4 +74,12 @@ class JudgeCalibrationResult(BaseModel):
     pearson_correlation: float
     mean_absolute_error: float
     calibrated: bool = Field(..., description="True if Cohen's Kappa >= 0.70")
+    assessment_mode: str = Field(
+        default="judge-assessed",
+        description="Assessment mode: 'judge-assessed' or 'mock-assessed'",
+    )
+    is_mock: bool = Field(
+        default=False,
+        description="True if calibration used a mock judge",
+    )
     details: list[dict[str, Any]] = Field(default_factory=list)

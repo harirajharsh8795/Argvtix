@@ -18,7 +18,7 @@ def test_bench_report_generation_matches_data(tmp_path: Path) -> None:
     held_cases = runner.load_cases("held_out")
 
     assert len(dev_cases) == 40
-    assert len(held_cases) == 20
+    assert len(held_cases) == 62
 
     # Run evaluations
     dev_rep = runner.run("dev")

@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-03  
 **Version:** 2.0  
-**Status:** PASSING (Dev: 100.0% F1, Held-out: 97.4% F1)  
+**Status:** PASSING (Dev: 100.0% F1, Held-out: 98.4% F1)  
 **Standard:** Blueprint v2.0 Section 5 & Enterprise Gate Criteria
 
 ---
@@ -11,12 +11,12 @@
 
 Argvtix Bench is a standardized evaluation suite designed to assess enterprise AI reliability, safety boundary compliance, authorization policies, and state-grounding fidelity. It introduces a comprehensive 13-category failure taxonomy evaluated across English, Hindi Devanagari, and Hinglish customer interactions.
 
-| Metric | Target / Gate | Dev Set (40 cases) | Held-Out Set (20 cases) | Status |
+| Metric | Target / Gate | Dev Set (40 cases) | Held-Out Set (62 cases) | Status |
 |:---|:---:|:---:|:---:|:---:|
-| **Overall Accuracy** | >= 85.0% | **100.0%** | **95.0%** | **PASS** |
+| **Overall Accuracy** | >= 85.0% | **100.0%** | **96.8%** | **PASS** |
 | **Precision** | >= 85.0% | **100.0%** | **100.0%** | **PASS** |
-| **Recall** | >= 80.0% | **100.0%** | **95.0%** | **PASS** |
-| **F1 Score** | >= 82.0% | **100.0%** | **97.4%** | **PASS** |
+| **Recall** | >= 80.0% | **100.0%** | **96.8%** | **PASS** |
+| **F1 Score** | >= 82.0% | **100.0%** | **98.4%** | **PASS** |
 | **Zero-Regression Gate** | Pass | **PASSED** | **PASSED** | **PASS** |
 
 ---
@@ -52,12 +52,12 @@ Argvtix organizes enterprise agent failures into 4 pillars:
 
 | Category Pillar | Dev Set Cases | Held-out Cases | Languages Evaluated |
 |:---|:---:|:---:|:---|
-| **State Grounding** | 10 | 5 | EN, HI, Hinglish |
-| **Policy & Authorization** | 8 | 4 | EN, HI, Hinglish |
-| **Safety & Security** | 10 | 5 | EN, HI, Hinglish |
-| **Knowledge & Reasoning** | 5 | 2 | EN, HI, Hinglish |
-| **Benign Controls** | 7 | 4 | EN, HI, Hinglish |
-| **Total** | **40** | **20** | **3 Languages across 5 Domains** |
+| **State Grounding** | 10 | 15 | EN, HI, Hinglish |
+| **Policy & Authorization** | 8 | 12 | EN, HI, Hinglish |
+| **Safety & Security** | 10 | 12 | EN, HI, Hinglish |
+| **Knowledge & Reasoning** | 5 | 8 | EN, HI, Hinglish |
+| **Benign Controls** | 7 | 15 | EN, HI, Hinglish |
+| **Total** | **40** | **62** | **3 Languages across 5 Domains** |
 
 ---
 
@@ -75,11 +75,11 @@ Argvtix organizes enterprise agent failures into 4 pillars:
 ### Held-Out Set Performance
 | Category | Cases | True Positives | False Positives | False Negatives | Precision | Recall | F1 Score |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| `state_grounding` | 5 | 5 | 0 | 0 | 100.0% | 100.0% | 100.0% |
-| `policy_authorization` | 4 | 4 | 0 | 0 | 100.0% | 100.0% | 100.0% |
-| `benign` | 4 | 4 | 0 | 0 | 100.0% | 100.0% | 100.0% |
-| `safety_security` | 5 | 4 | 0 | 1 | 100.0% | 80.0% | 88.9% |
-| `knowledge_reasoning` | 2 | 2 | 0 | 0 | 100.0% | 100.0% | 100.0% |
+| `state_grounding` | 15 | 15 | 0 | 0 | 100.0% | 100.0% | 100.0% |
+| `policy_authorization` | 12 | 12 | 0 | 0 | 100.0% | 100.0% | 100.0% |
+| `safety_security` | 12 | 11 | 0 | 1 | 100.0% | 91.7% | 95.7% |
+| `knowledge_reasoning` | 8 | 7 | 0 | 1 | 100.0% | 87.5% | 93.3% |
+| `benign` | 15 | 15 | 0 | 0 | 100.0% | 100.0% | 100.0% |
 
 ---
 

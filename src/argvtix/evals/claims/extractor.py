@@ -11,9 +11,11 @@ Supports:
 
 from __future__ import annotations
 
+import json
+import logging
 import re
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from argvtix.evals.claims.schemas import (
     Claim,
@@ -21,37 +23,122 @@ from argvtix.evals.claims.schemas import (
     ExtractionAccuracyReport,
 )
 
+if TYPE_CHECKING:
+    from argvtix.evals.benchmarks.adapters import ModelAdapter
+
+logger = logging.getLogger(__name__)
+
+
+SYSTEM_PROMPT = """You are an enterprise factual claim extraction assistant.
+Analyze the agent's text and extract all factual assertions made by the agent.
+Return a JSON object with a single key 'claims' containing an array of claim objects.
+Each claim object must follow this exact schema:
+{
+  "source_text": "exact substring or sentence making the claim",
+  "claim_type": "status_update" | "refund_issued" | "payment_processed" | "order_cancelled" | "ticket_escalated" | "inventory_modified" | "action_taken" | "policy_stated",
+  "entity_type": "order" | "refund" | "payment" | "ticket" | "account" | "entity",
+  "entity_id": "string or null",
+  "claimed_status": "completed" | "cancelled" | "delivered" | "failed" | null,
+  "claimed_amount": number | null,
+  "claimed_currency": "INR" | "USD" | null,
+  "is_success_claimed": boolean,
+  "confidence": number between 0.0 and 1.0
+}
+If there are no factual claims (e.g. only greetings, pleasantries, or polite sign-offs), return: {"claims": []}
+Output raw JSON only without markdown formatting or commentary."""
+
 
 class ClaimExtractor:
     """
     Extracts structured factual claims from agent responses.
-    Can operate via an LLM callable or a deterministic multilingual semantic parser.
+    Can operate via an LLM model adapter, an LLM callable, or a deterministic
+    multilingual semantic parser with automatic fallback.
     """
 
-    def __init__(self, llm_callable: Callable[[str], dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self,
+        llm_callable: Callable[[str], dict[str, Any] | list[dict[str, Any]]] | None = None,
+        adapter: ModelAdapter | None = None,
+    ) -> None:
         self.llm_callable = llm_callable
+        self.adapter = adapter
 
     def extract_claims(self, text: str, context: dict[str, Any] | None = None) -> list[Claim]:
         """
         Extract structured claims from agent response text.
-        If an LLM callable is provided, invokes it for structured output,
-        otherwise falls back to the deterministic multilingual pattern extractor.
+        If an LLM adapter or callable is provided, invokes it for Pydantic-validated
+        structured output, otherwise gracefully falls back to the deterministic multilingual
+        pattern extractor.
         """
         if not text or not text.strip():
             return []
 
-        if self.llm_callable is not None:
+        # Attempt LLM extraction if adapter or callable is present
+        if self.adapter is not None or self.llm_callable is not None:
             try:
-                raw_claims = self.llm_callable(text)
-                if isinstance(raw_claims, list):
-                    return [Claim(**item) for item in raw_claims]
-                if isinstance(raw_claims, dict) and "claims" in raw_claims:
-                    return [Claim(**item) for item in raw_claims["claims"]]
-            except Exception:
-                # Graceful fallback to deterministic parsing on LLM error
-                pass
+                llm_claims = self._extract_via_llm(text, context)
+                if llm_claims is not None:
+                    return llm_claims
+            except Exception as exc:
+                logger.warning(
+                    "LLM claim extraction failed, falling back to deterministic parser: %s",
+                    exc,
+                )
 
         return self._extract_deterministic(text, context)
+
+    def _extract_via_llm(
+        self, text: str, context: dict[str, Any] | None = None
+    ) -> list[Claim] | None:
+        """
+        Calls the LLM adapter or callable with structured instructions and validates output with Pydantic.
+        Returns a list of validated Claim objects, or None if extraction failed.
+        """
+        raw_output: Any = None
+
+        if self.adapter is not None:
+            response = self.adapter.generate(prompt=text, system_prompt=SYSTEM_PROMPT)
+            if not response.succeeded or not response.text.strip():
+                return None
+            raw_output = self._parse_json_response(response.text)
+        elif self.llm_callable is not None:
+            raw_result = self.llm_callable(text)
+            if isinstance(raw_result, str):
+                raw_output = self._parse_json_response(raw_result)
+            else:
+                raw_output = raw_result
+
+        if raw_output is None:
+            return None
+
+        # Extract items list
+        items: list[Any] = []
+        if isinstance(raw_output, list):
+            items = raw_output
+        elif isinstance(raw_output, dict):
+            if "claims" in raw_output and isinstance(raw_output["claims"], list):
+                items = raw_output["claims"]
+            elif "claim_type" in raw_output:
+                items = [raw_output]
+
+        # Pydantic v2 validation
+        validated: list[Claim] = []
+        for item in items:
+            if isinstance(item, dict):
+                claim_obj = Claim.model_validate(item)
+                validated.append(claim_obj)
+
+        return validated
+
+    @staticmethod
+    def _parse_json_response(text: str) -> Any:
+        """Strips markdown code blocks and parses raw JSON."""
+        cleaned = text.strip()
+        if "```json" in cleaned:
+            cleaned = cleaned.split("```json", 1)[1].split("```", 1)[0].strip()
+        elif "```" in cleaned:
+            cleaned = cleaned.split("```", 1)[1].split("```", 1)[0].strip()
+        return json.loads(cleaned)
 
     def _extract_deterministic(
         self, text: str, context: dict[str, Any] | None = None
@@ -457,6 +544,49 @@ class ClaimExtractor:
             true_positives=tp,
             false_positives=fp,
             false_negatives=fn,
+            precision=round(prec, 4),
+            recall=round(rec, 4),
+            f1_score=round(f1, 4),
+        )
+
+    def evaluate_dataset(self, dataset: list[tuple[str, list[Claim]]]) -> ExtractionAccuracyReport:
+        """
+        Evaluates extraction accuracy across a dataset of (text, ground_truth_claims) pairs.
+        Aggregates true positives, false positives, and false negatives.
+        """
+        total_tp = 0
+        total_fp = 0
+        total_fn = 0
+        total_expected = 0
+        total_extracted = 0
+
+        for text, gt_claims in dataset:
+            extracted = self.extract_claims(text)
+            rep = self.evaluate_extraction_accuracy(extracted, gt_claims)
+            total_tp += rep.true_positives
+            total_fp += rep.false_positives
+            total_fn += rep.false_negatives
+            total_expected += rep.total_expected_claims
+            total_extracted += rep.total_extracted_claims
+
+        prec = (
+            total_tp / (total_tp + total_fp)
+            if (total_tp + total_fp) > 0
+            else (1.0 if total_expected == 0 else 0.0)
+        )
+        rec = (
+            total_tp / (total_tp + total_fn)
+            if (total_tp + total_fn) > 0
+            else (1.0 if total_expected == 0 else 0.0)
+        )
+        f1 = (2 * prec * rec) / (prec + rec) if (prec + rec) > 0 else 0.0
+
+        return ExtractionAccuracyReport(
+            total_expected_claims=total_expected,
+            total_extracted_claims=total_extracted,
+            true_positives=total_tp,
+            false_positives=total_fp,
+            false_negatives=total_fn,
             precision=round(prec, 4),
             recall=round(rec, 4),
             f1_score=round(f1, 4),
