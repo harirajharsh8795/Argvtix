@@ -38,7 +38,9 @@ class WatchdogEngine:
         """Register a new data integrity rule."""
         self.rules.append(rule)
 
-    def scan(self, db: Session, persist: bool = True) -> dict[str, any]:
+    def scan(
+        self, db: Session, persist: bool = True, project_id: str = "default"
+    ) -> dict[str, any]:
         """
         Run all registered rules against the database.
         Optionally persists findings to watchdog_findings table.
@@ -60,10 +62,11 @@ class WatchdogEngine:
 
             if persist:
                 for finding in findings:
-                    # Avoid duplicate records for the same rule & entity if unresolved
+                    # Avoid duplicate records for the same rule & entity if unresolved in project
                     existing = (
                         db.query(WatchdogFindingRecord)
                         .filter_by(
+                            project_id=project_id,
                             rule_name=finding.rule_name,
                             entity_id=finding.entity_id,
                             resolved=False,
@@ -72,6 +75,7 @@ class WatchdogEngine:
                     )
                     if not existing:
                         record = WatchdogFindingRecord(
+                            project_id=project_id,
                             rule_name=finding.rule_name,
                             severity=finding.severity.value,
                             description=finding.description,

@@ -47,6 +47,7 @@ def save_trace(db: Session, trace: Trace) -> TraceRecord:
 
     record = TraceRecord(
         id=trace.trace_id,
+        project_id=getattr(trace, "project_id", "default") or "default",
         session_id=trace.session_id,
         user_id=trace.customer_id,
         channel=trace.metadata.get("channel", "web"),
@@ -83,12 +84,15 @@ def save_trace(db: Session, trace: Trace) -> TraceRecord:
     return record
 
 
-def get_trace(db: Session, trace_id: str) -> Trace | None:
+def get_trace(db: Session, trace_id: str, project_id: str | None = None) -> Trace | None:
     """
     Fetch a TraceRecord from database by trace_id and deserialize it
     back into a Pydantic v2 Trace object. Returns None if not found.
     """
-    record = db.query(TraceRecord).filter(TraceRecord.id == trace_id).first()
+    query = db.query(TraceRecord).filter(TraceRecord.id == trace_id)
+    if project_id:
+        query = query.filter(TraceRecord.project_id == project_id)
+    record = query.first()
     if not record:
         return None
 
@@ -111,6 +115,7 @@ def get_trace(db: Session, trace_id: str) -> Trace | None:
 
     return Trace(
         trace_id=record.id,
+        project_id=record.project_id,
         session_id=record.session_id,
         customer_id=record.user_id,
         input_text=record.input_text,
@@ -134,11 +139,14 @@ def list_trace_records(
     db: Session,
     workflow_type: str | None = None,
     status_filter: str | None = None,
+    project_id: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> list[TraceRecord]:
     """List trace records with optional filters and pagination."""
     query = db.query(TraceRecord)
+    if project_id:
+        query = query.filter(TraceRecord.project_id == project_id)
     if workflow_type:
         query = query.filter(TraceRecord.workflow_type == workflow_type)
     if status_filter:

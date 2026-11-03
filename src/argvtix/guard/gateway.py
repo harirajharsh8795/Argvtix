@@ -204,6 +204,7 @@ class ToolGateway:
                 guard_reason=guard_resp.reason,
                 risk_level=guard_resp.risk_level,
                 idempotency_key=idempotency_key,
+                project_id=str(params.get("project_id") or "default"),
                 db=db,
             )
             gate_res = GatewayResult(

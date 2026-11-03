@@ -71,6 +71,7 @@ class ApprovalQueue:
         guard_reason: str = "",
         risk_level: Severity = Severity.HIGH,
         idempotency_key: str | None = None,
+        project_id: str = "default",
         db: Session | None = None,
     ) -> ApprovalQueueRecord:
         """Create a new pending approval item in the database."""
@@ -78,6 +79,7 @@ class ApprovalQueue:
             raise ValueError("Database session is required to enqueue approval.")
 
         record = ApprovalQueueRecord(
+            project_id=project_id,
             action_type=action_type,
             tool_name=tool_name,
             entity_id=str(entity_id),
@@ -100,16 +102,13 @@ class ApprovalQueue:
         db: Session,
         limit: int = 50,
         offset: int = 0,
+        project_id: str | None = None,
     ) -> list[ApprovalQueueRecord]:
         """List all pending items awaiting human review."""
-        return (
-            db.query(ApprovalQueueRecord)
-            .filter_by(status=ApprovalStatus.PENDING.value)
-            .order_by(ApprovalQueueRecord.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        q = db.query(ApprovalQueueRecord).filter_by(status=ApprovalStatus.PENDING.value)
+        if project_id:
+            q = q.filter(ApprovalQueueRecord.project_id == project_id)
+        return q.order_by(ApprovalQueueRecord.created_at.desc()).offset(offset).limit(limit).all()
 
     def list_all(
         self,
@@ -117,16 +116,24 @@ class ApprovalQueue:
         status: str | None = None,
         limit: int = 50,
         offset: int = 0,
+        project_id: str | None = None,
     ) -> list[ApprovalQueueRecord]:
         """List items filtered by status."""
         q = db.query(ApprovalQueueRecord)
+        if project_id:
+            q = q.filter(ApprovalQueueRecord.project_id == project_id)
         if status:
             q = q.filter_by(status=status)
         return q.order_by(ApprovalQueueRecord.created_at.desc()).offset(offset).limit(limit).all()
 
-    def get_by_id(self, approval_id: str, db: Session) -> ApprovalQueueRecord | None:
+    def get_by_id(
+        self, approval_id: str, db: Session, project_id: str | None = None
+    ) -> ApprovalQueueRecord | None:
         """Fetch single approval record."""
-        return db.query(ApprovalQueueRecord).filter_by(id=approval_id).first()
+        q = db.query(ApprovalQueueRecord).filter_by(id=approval_id)
+        if project_id:
+            q = q.filter(ApprovalQueueRecord.project_id == project_id)
+        return q.first()
 
     def approve(
         self,
@@ -135,12 +142,13 @@ class ApprovalQueue:
         notes: str,
         db: Session,
         gateway: Any | None = None,
+        project_id: str | None = None,
     ) -> tuple[ApprovalQueueRecord, Any]:
         """
         Human approves the action.
         Status changes to APPROVED, and if gateway provided, executes tool.
         """
-        record = self.get_by_id(approval_id, db)
+        record = self.get_by_id(approval_id, db, project_id=project_id)
         if not record:
             raise ValueError(f"Approval request {approval_id} not found.")
 
@@ -173,9 +181,10 @@ class ApprovalQueue:
         reviewer_id: str,
         reason: str,
         db: Session,
+        project_id: str | None = None,
     ) -> ApprovalQueueRecord:
         """Human rejects the action."""
-        record = self.get_by_id(approval_id, db)
+        record = self.get_by_id(approval_id, db, project_id=project_id)
         if not record:
             raise ValueError(f"Approval request {approval_id} not found.")
 
@@ -200,9 +209,10 @@ class ApprovalQueue:
         notes: str,
         db: Session,
         gateway: Any | None = None,
+        project_id: str | None = None,
     ) -> tuple[ApprovalQueueRecord, Any]:
         """Human modifies parameters (e.g. lowering refund amount) and approves."""
-        record = self.get_by_id(approval_id, db)
+        record = self.get_by_id(approval_id, db, project_id=project_id)
         if not record:
             raise ValueError(f"Approval request {approval_id} not found.")
 

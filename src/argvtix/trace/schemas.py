@@ -302,6 +302,7 @@ class Trace(BaseModel):
         default_factory=lambda: f"tr-{uuid.uuid4().hex[:12]}",
         description="Unique trace ID, e.g. 'tr-a1b2c3d4e5f6'",
     )
+    project_id: str = Field(default="default", description="Scoped enterprise project ID")
 
     # Context
     customer_id: str | None = Field(default=None, description="Customer who triggered this trace")

@@ -341,7 +341,16 @@ def test_gateway_approvals_flow(client: TestClient) -> None:
     assert appr_data["approval_status"] == "approved"
 
 
-def test_auth_token_issue_endpoint(client: TestClient) -> None:
+def test_auth_token_issue_endpoint(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Blind password acceptance is rejected by default in dev mode
+    res_rejected = client.post(
+        "/api/v1/auth/token",
+        json={"username": "dev_test", "password": "any", "project_id": "proj_1", "role": "admin"},
+    )
+    assert res_rejected.status_code == 401
+
+    # Allowed when explicit insecure dev opt-in flag is enabled
+    monkeypatch.setenv("ARGVTIX_ALLOW_INSECURE_DEV_AUTH", "true")
     res = client.post(
         "/api/v1/auth/token",
         json={"username": "dev_test", "password": "any", "project_id": "proj_1", "role": "admin"},

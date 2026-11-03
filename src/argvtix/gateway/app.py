@@ -172,24 +172,40 @@ _env_name = os.getenv("ENVIRONMENT", os.getenv("ARGVTIX_ENV", "development")).lo
 is_production = _env_name in ("production", "prod", "staging")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Initialize database tables and enforce production startup invariants."""
+def verify_startup_configuration() -> None:
+    """Validate critical environment configuration and startup invariants.
+
+    Raises RuntimeError if a required production variable is missing or insecure.
+    """
     env = os.getenv("ENVIRONMENT", os.getenv("ARGVTIX_ENV", "development")).lower()
     is_prod = env in ("production", "prod", "staging")
 
     if is_prod:
         from argvtix.db.session import DATABASE_URL
 
-        if DATABASE_URL.startswith("sqlite"):
+        if not DATABASE_URL or DATABASE_URL.startswith("sqlite"):
             raise RuntimeError(
                 "CRITICAL PRODUCTION CONFIGURATION ERROR: Production environment detected, but DATABASE_URL "
-                "is pointing to SQLite ('sqlite:///...'). Production requires a managed database (PostgreSQL)."
+                "is missing or pointing to SQLite ('sqlite:///...'). Production requires a managed database (PostgreSQL)."
             )
         from argvtix.security.auth import get_jwt_secret_key
 
         get_jwt_secret_key()
 
+        admin_pass = os.getenv(
+            "ARGVTIX_ADMIN_PASSWORD", os.getenv("PROOFLINE_ADMIN_PASSWORD", "")
+        ).strip()
+        if not admin_pass:
+            raise RuntimeError(
+                "CRITICAL PRODUCTION CONFIGURATION ERROR: Production environment detected, but ARGVTIX_ADMIN_PASSWORD "
+                "is not configured. Administrative credentials are required for production startup."
+            )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize database tables and enforce production startup invariants."""
+    verify_startup_configuration()
     init_db()
     yield
 
@@ -217,7 +233,9 @@ app.add_middleware(MaxPayloadSizeMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 
 # 3. Explicit CORS Policy
-_configured_origins = os.getenv("ARGVTIX_ALLOWED_ORIGINS", "")
+_configured_origins = os.getenv(
+    "ARGVTIX_ALLOWED_ORIGINS", os.getenv("PROOFLINE_ALLOWED_ORIGINS", "")
+)
 if _configured_origins:
     allowed_origins = [o.strip() for o in _configured_origins.split(",") if o.strip()]
 else:
@@ -439,7 +457,11 @@ class TraceIngestResponse(BaseModel):
     tags=["Traces"],
     status_code=status.HTTP_201_CREATED,
 )
-def ingest_trace(trace: Trace, db: Session = Depends(get_db)) -> TraceIngestResponse:
+def ingest_trace(
+    trace: Trace,
+    db: Session = Depends(get_db),
+    user: TokenPayload = Depends(get_current_user),
+) -> TraceIngestResponse:
     """Ingest a complete AI execution trace with validation."""
     # Ensure aggregates are computed
     trace.compute_aggregates()
@@ -470,9 +492,16 @@ def ingest_trace(trace: Trace, db: Session = Depends(get_db)) -> TraceIngestResp
     if not workflow_type and trace.tags:
         workflow_type = trace.tags[0]
 
+    assigned_project_id = (
+        user.project_id
+        if user.project_id and user.project_id != "default"
+        else (getattr(trace, "project_id", "default") or "default")
+    )
+
     # Create root trace record
     record = TraceRecord(
         id=trace.trace_id,
+        project_id=assigned_project_id,
         session_id=trace.session_id,
         user_id=trace.customer_id,
         channel=trace.metadata.get("channel", "web"),
@@ -525,9 +554,10 @@ def list_traces(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
+    user: TokenPayload = Depends(get_current_user),
 ) -> dict[str, Any]:
     """List ingested traces with optional filtering and pagination."""
-    query = db.query(TraceRecord)
+    query = db.query(TraceRecord).filter(TraceRecord.project_id == user.project_id)
     if workflow_type:
         query = query.filter(TraceRecord.workflow_type == workflow_type)
     if trace_status:
@@ -566,22 +596,29 @@ def list_traces(
 
 
 @app.get("/api/v1/traces/stats", tags=["Traces"])
-def get_trace_stats(db: Session = Depends(get_db)) -> dict[str, Any]:
-    """Return high-level summary metrics across all recorded traces in a single query with TTL caching."""
-    cache_key = "traces:stats"
+def get_trace_stats(
+    db: Session = Depends(get_db),
+    user: TokenPayload = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return high-level summary metrics across recorded traces for project in a single query with TTL caching."""
+    cache_key = f"traces:stats:{user.project_id}"
     cached = cache_manager.get(cache_key)
     if cached is not None:
         return cached
 
-    row = db.query(
-        func.count(TraceRecord.id).label("total_traces"),
-        func.sum(case((TraceRecord.status == TraceStatus.COMPLETED.value, 1), else_=0)).label(
-            "successful"
-        ),
-        func.avg(TraceRecord.total_latency_ms).label("avg_latency"),
-        func.sum(TraceRecord.total_cost_usd).label("total_cost"),
-        func.sum(TraceRecord.total_tokens).label("total_tokens"),
-    ).first()
+    row = (
+        db.query(
+            func.count(TraceRecord.id).label("total_traces"),
+            func.sum(case((TraceRecord.status == TraceStatus.COMPLETED.value, 1), else_=0)).label(
+                "successful"
+            ),
+            func.avg(TraceRecord.total_latency_ms).label("avg_latency"),
+            func.sum(TraceRecord.total_cost_usd).label("total_cost"),
+            func.sum(TraceRecord.total_tokens).label("total_tokens"),
+        )
+        .filter(TraceRecord.project_id == user.project_id)
+        .first()
+    )
 
     total_traces = int(row.total_traces or 0)
     if total_traces == 0:
@@ -613,15 +650,25 @@ def get_trace_stats(db: Session = Depends(get_db)) -> dict[str, Any]:
 
 
 @app.get("/api/v1/cache/metrics", tags=["System"])
-def get_cache_metrics() -> dict[str, Any]:
+def get_cache_metrics(
+    user: TokenPayload = Depends(require_role(Role.VIEWER)),
+) -> dict[str, Any]:
     """Return real-time cache observability, hit rates, and capacity metrics."""
     return cache_manager.get_metrics()
 
 
 @app.get("/api/v1/traces/{trace_id}", tags=["Traces"])
-def get_trace(trace_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+def get_trace(
+    trace_id: str,
+    db: Session = Depends(get_db),
+    user: TokenPayload = Depends(get_current_user),
+) -> dict[str, Any]:
     """Retrieve full detail for a trace, including chronological execution steps."""
-    record = db.query(TraceRecord).filter_by(id=trace_id).first()
+    record = (
+        db.query(TraceRecord)
+        .filter(TraceRecord.id == trace_id, TraceRecord.project_id == user.project_id)
+        .first()
+    )
     if not record:
         raise HTTPException(status_code=404, detail=f"Trace {trace_id} not found")
 
@@ -697,7 +744,7 @@ def run_watchdog_scan(
     user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Trigger an on-demand scan of all data integrity rules against business tables."""
-    return watchdog_engine.scan(db, persist=True)
+    return watchdog_engine.scan(db, persist=True, project_id=user.project_id)
 
 
 @app.get("/api/v1/watchdog/findings", tags=["Watchdog"])
@@ -709,7 +756,9 @@ def list_watchdog_findings(
     user: TokenPayload = Depends(get_current_user),
 ) -> dict[str, Any]:
     """List data anomalies flagged by Watchdog."""
-    query = db.query(WatchdogFindingRecord)
+    query = db.query(WatchdogFindingRecord).filter(
+        WatchdogFindingRecord.project_id == user.project_id
+    )
     if resolved is not None:
         query = query.filter(WatchdogFindingRecord.resolved == resolved)
     if severity:
@@ -747,7 +796,14 @@ def resolve_finding(
     user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Mark a watchdog finding as reviewed and resolved."""
-    finding = db.query(WatchdogFindingRecord).filter_by(id=finding_id).first()
+    finding = (
+        db.query(WatchdogFindingRecord)
+        .filter(
+            WatchdogFindingRecord.id == finding_id,
+            WatchdogFindingRecord.project_id == user.project_id,
+        )
+        .first()
+    )
     if not finding:
         raise HTTPException(status_code=404, detail=f"Finding {finding_id} not found")
 
@@ -872,7 +928,10 @@ class InspectTextRequest(BaseModel):
 
 
 @app.post("/api/v1/security/mask", tags=["Security"])
-def mask_sensitive_pii(request: MaskTextRequest) -> dict[str, Any]:
+def mask_sensitive_pii(
+    request: MaskTextRequest,
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
+) -> dict[str, Any]:
     """Sanitize inbound text by masking Aadhaar, Phone, PAN, Email, Card, and UPI."""
     res = pii_masker.mask(request.text)
     return {
@@ -894,7 +953,10 @@ def mask_sensitive_pii(request: MaskTextRequest) -> dict[str, Any]:
 
 
 @app.post("/api/v1/security/inspect", tags=["Security"])
-def inspect_outbound_text(request: InspectTextRequest) -> dict[str, Any]:
+def inspect_outbound_text(
+    request: InspectTextRequest,
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
+) -> dict[str, Any]:
     """Audit outbound agent response for PII, system prompt leakage, and credentials."""
     res = dlp_filter.inspect(request.text)
     return {
@@ -928,7 +990,10 @@ class RedTeamRunRequest(BaseModel):
 
 @app.post("/api/v1/conflicts/scan", tags=["Policy Conflicts"])
 @app.post("/api/v1/security/conflicts/scan", tags=["Policy Conflicts"])
-def scan_policy_conflicts(request: ConflictScanRequest = ConflictScanRequest()) -> dict[str, Any]:
+def scan_policy_conflicts(
+    request: ConflictScanRequest = ConflictScanRequest(),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
+) -> dict[str, Any]:
     """Audit policy documents for contradictory rules and SLA mismatches."""
     detector = PolicyConflictDetector()
     report = detector.scan_documents(POLICY_DOCUMENTS)
@@ -963,6 +1028,7 @@ def scan_policy_conflicts(request: ConflictScanRequest = ConflictScanRequest()) 
 def run_redteam_benchmark(
     request: RedTeamRunRequest = RedTeamRunRequest(),
     db: Session = Depends(get_db),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Run standardized 40-attack red team suite measuring before vs after defense."""
     runner = RedTeamRunner(db=db)
@@ -1006,7 +1072,10 @@ class PassKRunRequest(BaseModel):
 
 
 @app.post("/api/v1/evals/verify-claims", tags=["Evals"])
-def verify_claims_endpoint(request: VerifyClaimsRequest) -> dict[str, Any]:
+def verify_claims_endpoint(
+    request: VerifyClaimsRequest,
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
+) -> dict[str, Any]:
     """Deterministically verify factual claims in agent response against tool/DB state."""
     agent_resp = (request.agent_response or request.response_text or "").strip()
     tools = list(request.tool_records)
@@ -1063,7 +1132,9 @@ def verify_claims_endpoint(request: VerifyClaimsRequest) -> dict[str, Any]:
 
 
 @app.get("/api/v1/evals/planted-scenarios", tags=["Evals"])
-def list_planted_scenarios() -> dict[str, Any]:
+def list_planted_scenarios(
+    user: TokenPayload = Depends(require_role(Role.VIEWER)),
+) -> dict[str, Any]:
     """Retrieve all 30 planted failure scenarios across the 6 failure categories."""
     scenarios = get_planted_cases()
     return {
@@ -1088,6 +1159,7 @@ def list_planted_scenarios() -> dict[str, Any]:
 def run_passk_endpoint(
     request: PassKRunRequest = PassKRunRequest(),
     db: Session = Depends(get_db),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Run pass^k multi-trial reliability evaluation across golden workflows."""
     cases = (
@@ -1157,7 +1229,9 @@ def list_approvals_endpoint(
 ) -> dict[str, Any]:
     """List pending or filtered human-in-the-loop approval requests."""
     queue = ApprovalQueue()
-    records = queue.list_all(db=db, status=status, limit=limit, offset=offset)
+    records = queue.list_all(
+        db=db, status=status, limit=limit, offset=offset, project_id=user.project_id
+    )
     return {
         "total": len(records),
         "approvals": [
@@ -1200,6 +1274,7 @@ def approve_request_endpoint(
             notes=request.notes,
             db=db,
             gateway=gateway,
+            project_id=user.project_id,
         )
         logger.info(
             f"Approval Decision: {approval_id} -> APPROVED by reviewer={reviewer_identity} notes='{request.notes}'"
@@ -1211,7 +1286,13 @@ def approve_request_endpoint(
             "execution_result": exec_result.data if hasattr(exec_result, "data") else exec_result,
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        err_msg = str(e)
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in err_msg.lower()
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=err_msg)
 
 
 @app.post("/api/v1/guard/approvals/{approval_id}/reject", tags=["Guard Approvals"])
@@ -1230,6 +1311,7 @@ def reject_request_endpoint(
             reviewer_id=reviewer_identity,
             reason=request.notes or "Rejected by human reviewer",
             db=db,
+            project_id=user.project_id,
         )
         logger.info(
             f"Approval Decision: {approval_id} -> REJECTED by reviewer={reviewer_identity} reason='{updated_record.reviewer_notes}'"
@@ -1241,7 +1323,13 @@ def reject_request_endpoint(
             "reasons": updated_record.reviewer_notes,
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        err_msg = str(e)
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in err_msg.lower()
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=err_msg)
 
 
 # ============================================================================
@@ -1250,8 +1338,8 @@ def reject_request_endpoint(
 
 
 class AuthTokenRequest(BaseModel):
-    username: str = "admin"
-    password: str = "admin"
+    username: str
+    password: str
     project_id: str = "default"
     role: str = "admin"
 

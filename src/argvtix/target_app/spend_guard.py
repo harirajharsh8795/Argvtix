@@ -29,12 +29,21 @@ class LLMSpendGuard:
         self.daily_cap_usd = (
             daily_cap_usd
             if daily_cap_usd is not None
-            else float(os.getenv("ARGVTIX_DAILY_LLM_CAP_USD", "50.0"))
+            else float(
+                os.getenv(
+                    "ARGVTIX_DAILY_LLM_CAP_USD", os.getenv("PROOFLINE_DAILY_LLM_CAP_USD", "50.0")
+                )
+            )
         )
         self.monthly_cap_usd = (
             monthly_cap_usd
             if monthly_cap_usd is not None
-            else float(os.getenv("ARGVTIX_MONTHLY_LLM_CAP_USD", "500.0"))
+            else float(
+                os.getenv(
+                    "ARGVTIX_MONTHLY_LLM_CAP_USD",
+                    os.getenv("PROOFLINE_MONTHLY_LLM_CAP_USD", "500.0"),
+                )
+            )
         )
 
         self._lock = threading.Lock()
