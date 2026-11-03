@@ -2,6 +2,33 @@
 
 All notable changes to the Argvtix platform remediation audit are documented here.
 
+## [Step 4: Enforcement and Replay] - 2026-11-03
+
+### Added
+- **Multi-Level Replay Framework L0-L3 (Item 11)**:
+  - Created `src/argvtix/replay/levels.py` implementing 4 distinct replay levels:
+    - **L0 (Live / Fresh)**: Full execution with live tools and LLM inference.
+    - **L1 (Tool-Stubbed)**: Live LLM inference with recorded tool call outcomes stubbed.
+    - **L2 (Fully Deterministic Mock)**: Stubbed tool calls, stubbed retrieval chunks, pinned model parameters (model name, temperature=0.0, seed=42).
+    - **L3 (State-Restored Deterministic)**: Database pre-execution state snapshot restore before executing L2 isolation.
+  - Added `ReproducibilityClass` taxonomy (`DETERMINISTIC`, `PARTIAL`, `FRESH`) tagged on every `LevelReplayResult`.
+  - Added `compute_determinism_rate()` and `DeterminismReport` tracking trace match rate, output text equality, tool sequence identity, and execution duration.
+  - Added unit test suite `tests/test_replay/test_replay_levels.py` (7 tests).
+- **Hardened Tool Gateway Boundary (Item 12)**:
+  - Created `src/argvtix/guard/client.py` providing `ToolGatewayClient` across MCP (JSON-RPC 2.0 `tools/call`), HTTP (`/api/v1/guard/gateway/call`), in-process boundary, and stubbed modes.
+  - Decoupled `src/argvtix/target_app/agent.py`: completely removed direct imports of `shop_tools` and DB session dependency from `ShopOpsAgent`. Agent interacts exclusively via `ToolGatewayClient`.
+  - Verified Zero-Bypass Guarantee: proved write operations (`issue_refund`, etc.) cannot execute without passing ActionGuard:
+    - Guard `BLOCK` -> Gateway rejects action, 0 database writes occur.
+    - Guard `ASK_HUMAN` -> Gateway enqueues in `ApprovalQueue`, 0 business writes occur.
+    - Guard `ALLOW` -> Gateway executes action and commits business transaction.
+  - Added boundary test suite `tests/test_guard/test_gateway_boundary.py` (8 tests).
+
+### Measured Results
+- **Full Test Suite**: 444 passed, 0 failures, 2 benign websockets deprecation warnings in 44.41s.
+- **Lint & Format**: `ruff check .` 0 errors, `ruff format --check .` 214 files cleanly formatted.
+
+---
+
 ## [Step 3: Evaluation Quality] - 2026-11-03
 
 ### Added

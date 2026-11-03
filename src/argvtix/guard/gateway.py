@@ -87,6 +87,12 @@ class ToolGateway:
             description="Read refund status",
         )
         self.register_tool(
+            "check_inventory",
+            shop_tools.check_inventory,
+            is_write=False,
+            description="Read product inventory count",
+        )
+        self.register_tool(
             "issue_refund",
             shop_tools.issue_refund,
             is_write=True,

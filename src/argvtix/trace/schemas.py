@@ -119,6 +119,9 @@ class RetrievalData(BaseModel):
         ..., description="Retrieval method: 'vector', 'bm25', 'hybrid', 'hybrid_rerank'"
     )
     chunk_ids: list[str] = Field(default_factory=list, description="IDs of retrieved chunks")
+    retrieved_chunks: list[str] = Field(
+        default_factory=list, description="Text content of retrieved chunks"
+    )
     scores: list[float] = Field(default_factory=list, description="Relevance scores per chunk")
     num_results: int = Field(default=0, ge=0, description="Number of results returned")
     latency_ms: float = Field(default=0.0, ge=0.0, description="Retrieval latency in ms")

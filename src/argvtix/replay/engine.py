@@ -3,6 +3,7 @@ Replay Engine — Rerun historical traces or golden test cases against candidate
 
 Features:
 - Historical trace replay: Re-executes the exact user ticket with a new model/prompt and computes deltas.
+- Replay Levels L0-L3: Evaluates reproducibility across fresh, tool-stubbed, retrieval-stubbed, and snapshot levels.
 - Golden case evaluation: Evaluates agent output and guard decisions against ground-truth expectations.
 - Suite benchmark runner: Runs all 50 golden benchmark cases and outputs aggregate accuracy metrics.
 """
@@ -10,6 +11,7 @@ Features:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
@@ -18,6 +20,14 @@ from argvtix.target_app.agent import ShopOpsAgent
 from argvtix.target_app.llm import LLMProtocol, get_default_llm
 from argvtix.trace.schemas import Trace
 from argvtix.trace.store import get_trace
+
+if TYPE_CHECKING:
+    from argvtix.replay.levels import (
+        DeterminismReport,
+        LevelReplayResult,
+        ReplayLevel,
+        StateSnapshot,
+    )
 
 
 @dataclass
@@ -146,6 +156,46 @@ class ReplayEngine:
             guard_decisions_match=(orig_guard.lower() == rep_guard.lower()),
             replayed_trace=replayed_trace,
         )
+
+    def replay_trace_at_level(
+        self,
+        trace_id: str,
+        level: ReplayLevel | None = None,
+        state_snapshot: StateSnapshot | None = None,
+    ) -> LevelReplayResult:
+        """
+        Replay a historical trace at a designated ReplayLevel (L0, L1, L2, L3)
+        and determine its reproducibility classification.
+        """
+        from argvtix.replay.levels import LevelReplayRunner, ReplayLevel
+
+        target_level = level or ReplayLevel.L2
+        orig_trace = get_trace(self.db, trace_id)
+        if not orig_trace:
+            raise ValueError(f"Trace {trace_id} not found in database.")
+
+        runner = LevelReplayRunner(db=self.db, default_llm=self.default_llm)
+        return runner.replay(orig_trace, level=target_level, state_snapshot=state_snapshot)
+
+    def benchmark_determinism(
+        self,
+        trace_ids: list[str],
+        level: ReplayLevel | None = None,
+    ) -> DeterminismReport:
+        """
+        Runs batch replay across trace IDs at specified ReplayLevel and computes determinism-rate.
+        """
+        from argvtix.replay.levels import LevelReplayRunner, ReplayLevel
+
+        target_level = level or ReplayLevel.L2
+        traces: list[Trace] = []
+        for tid in trace_ids:
+            t = get_trace(self.db, tid)
+            if t:
+                traces.append(t)
+
+        runner = LevelReplayRunner(db=self.db, default_llm=self.default_llm)
+        return runner.run_suite(traces, level=target_level)
 
     def replay_case(
         self,
