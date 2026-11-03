@@ -121,8 +121,8 @@ class GeminiLLM:
             self._mock = MockLLM()
 
     def call(self, prompt: str) -> str:
-        if self._use_mock:
-            return self._mock.call(prompt)
+        if self._use_mock or self._client is None:
+            return self._mock.call(prompt) if self._mock else "Mock response"
         response = self._client.generate_content(prompt)
         return response.text
 

@@ -220,6 +220,8 @@ class ToolGatewayClient:
                 "idempotency_key": idempotency_key,
             },
         }
+        if self.mcp_server is None:
+            raise ValueError("MCP server instance is not configured")
         if hasattr(self.mcp_server, "handle"):
             mcp_resp_dict = self.mcp_server.handle(mcp_req)
         elif hasattr(self.mcp_server, "handle_request"):

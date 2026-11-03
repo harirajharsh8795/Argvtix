@@ -1,5 +1,8 @@
 """Argvtix Scout: Permission-First Legal AI Chatbot Audit Platform."""
 
+from argvtix.scout.adapters.base import BaseTargetAdapter
+from argvtix.scout.adapters.http import HTTPChatAdapter
+from argvtix.scout.adapters.web_widget import PlaywrightWidgetAdapter
 from argvtix.scout.container import generate_scout_sandbox_compose, validate_egress_destination
 from argvtix.scout.oracles.engine import CompositeOracleVerdict, OracleEngine
 from argvtix.scout.probes.base import (
@@ -68,4 +71,7 @@ __all__ = [
     "ScoutAuditReport",
     "calculate_grade",
     "ScoutRunner",
+    "BaseTargetAdapter",
+    "HTTPChatAdapter",
+    "PlaywrightWidgetAdapter",
 ]
