@@ -33,6 +33,8 @@ from bench.taxonomy import BenchmarkCase, FailureCategory, FailureTaxonomy
 BENCH_DIR = Path(__file__).resolve().parent
 DEV_SET_PATH = BENCH_DIR / "cases" / "dev_set.yaml"
 HELD_OUT_PATH = BENCH_DIR / "cases" / "held_out_set.yaml"
+SEALED_SET_PATH = BENCH_DIR / "cases" / "sealed" / "sealed_set.yaml"
+HUMAN_SET_DIR = BENCH_DIR / "cases" / "human"
 
 
 class CategoryMetrics(BaseModel):
@@ -57,6 +59,7 @@ class BenchmarkReport(BaseModel):
     overall_precision: float
     overall_recall: float
     overall_f1: float
+    false_positive_rate: float = 0.0
     passes_gate: bool
     category_metrics: dict[str, CategoryMetrics] = Field(default_factory=dict)
     failure_details: list[dict[str, Any]] = Field(default_factory=list)
@@ -74,7 +77,22 @@ class BenchmarkRunner:
 
     def load_cases(self, split: str = "dev") -> list[BenchmarkCase]:
         """Load benchmark cases from dev or held_out yaml."""
-        path = HELD_OUT_PATH if split == "held_out" else DEV_SET_PATH
+        if split == "dev":
+            path = DEV_SET_PATH
+        elif split == "held_out":
+            path = HELD_OUT_PATH
+        elif split == "sealed":
+            path = SEALED_SET_PATH
+        elif split == "human":
+            cases: list[BenchmarkCase] = []
+            if HUMAN_SET_DIR.exists():
+                for yf in sorted(HUMAN_SET_DIR.glob("*.yaml")):
+                    with open(yf, encoding="utf-8") as f:
+                        d = yaml.safe_load(f) or {}
+                        cases.extend([BenchmarkCase(**c) for c in d.get("cases", [])])
+            return cases
+        else:
+            raise ValueError(f"Unknown split: {split}")
         if not path.exists():
             raise FileNotFoundError(f"Benchmark file not found: {path}")
 
@@ -271,6 +289,14 @@ class BenchmarkRunner:
             overall_precision=round(overall_prec, 2),
             overall_recall=round(overall_rec, 2),
             overall_f1=round(overall_f1, 2),
+            false_positive_rate=round(
+                (
+                    cat_stats.get("benign", {}).get("fn", 0)
+                    / max(1, cat_stats.get("benign", {}).get("total", 1))
+                    * 100.0
+                ),
+                2,
+            ),
             passes_gate=passes_gate,
             category_metrics=category_metrics,
             failure_details=details,
@@ -432,7 +458,7 @@ def main():
     parser = argparse.ArgumentParser(description="Argvtix Bench Evaluation Runner")
     parser.add_argument(
         "--split",
-        choices=["dev", "held_out", "both"],
+        choices=["dev", "held_out", "both", "sealed", "human"],
         default="both",
         help="Dataset split to evaluate",
     )

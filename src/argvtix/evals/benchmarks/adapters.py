@@ -313,3 +313,62 @@ class GPT4oAdapter(LiteLLMAdapter):
             api_key=api_key,
             temperature=temperature,
         )
+
+
+class OllamaAdapter(ModelAdapter):
+    """Local Ollama model adapter for local real-model evaluation."""
+
+    def __init__(
+        self,
+        model_name: str = "llama3.2:1b",
+        base_url: str = "http://127.0.0.1:11434",
+        temperature: float = 0.0,
+    ) -> None:
+        self.model_id = f"ollama/{model_name}"
+        self._model_name = model_name
+        self._base_url = base_url.rstrip("/")
+        self._temperature = temperature
+
+    def generate(self, prompt: str, system_prompt: str = "") -> ModelResponse:
+        import json
+        import urllib.request
+
+        payload: dict[str, Any] = {
+            "model": self._model_name,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"temperature": self._temperature},
+        }
+        if system_prompt:
+            payload["system"] = system_prompt
+
+        t0 = time.perf_counter()
+        try:
+            req = urllib.request.Request(
+                f"{self._base_url}/api/generate",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            latency_ms = (time.perf_counter() - t0) * 1000.0
+            text = data.get("response", "")
+            prompt_tokens = data.get("prompt_eval_count", len(prompt.split()))
+            completion_tokens = data.get("eval_count", len(text.split()))
+
+            return ModelResponse(
+                text=text,
+                model_id=self.model_id,
+                latency_ms=latency_ms,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                cost_usd=0.0,
+                raw_response=data,
+            )
+        except Exception as exc:
+            return ModelResponse(
+                text="",
+                model_id=self.model_id,
+                latency_ms=(time.perf_counter() - t0) * 1000.0,
+                error=str(exc),
+            )

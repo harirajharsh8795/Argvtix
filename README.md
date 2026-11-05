@@ -3,7 +3,7 @@
 > **"AI ne kya kiya, kya galat hua, aur naya version behtar hai ya nahi."**  
 > Record, Guard, Evaluate, and Watch your AI agents — all in one platform.
 
-[![Tests](https://img.shields.io/badge/tests-505%20passing-brightgreen)](#results-scoreboard)
+[![Tests](https://img.shields.io/badge/tests-508%20passing-brightgreen)](#results-scoreboard)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18-61dafb)](https://react.dev)
@@ -59,7 +59,7 @@ Customer Ticket ──→ AI Agent (ShopOps) ──→ Business DB
 
 | Metric | Target | Actual | Week / Source |
 |--------|--------|--------|---------------|
-| Automated Test Pass Rate | 100% | **505 / 505 passed (100%)** | `pytest tests/` |
+| Automated Test Pass Rate | 100% | **508 / 508 passed (100%)** | `pytest tests/` |
 | Trace Engine Coverage | 100% | **100% (7 step types)** | `tests/test_trace/` |
 | Watchdog Detection (DB Integrity) | 100% | **8/8 data faults verified** | `tests/test_watchdog/` |
 | Reconciliation Detection | 100% | **4/4 discrepancies caught** | `tests/test_watchdog/` |

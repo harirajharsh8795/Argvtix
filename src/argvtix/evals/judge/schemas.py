@@ -48,6 +48,10 @@ class JudgeVerdict(BaseModel):
         default=False,
         description="True if evaluated by a mock judge rather than a real LLM",
     )
+    review_status: str = Field(
+        default="needs-review",
+        description="Judge-only findings must always be labeled needs-review",
+    )
 
 
 class CalibrationCase(BaseModel):
@@ -74,6 +78,7 @@ class JudgeCalibrationResult(BaseModel):
     pearson_correlation: float
     mean_absolute_error: float
     calibrated: bool = Field(..., description="True if Cohen's Kappa >= 0.70")
+    model_name: str = Field(default="", description="Model identifier used for evaluation")
     assessment_mode: str = Field(
         default="judge-assessed",
         description="Assessment mode: 'judge-assessed' or 'mock-assessed'",

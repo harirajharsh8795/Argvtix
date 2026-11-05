@@ -1,4 +1,4 @@
-.PHONY: help setup test lint format seed up down demo clean dev run
+.PHONY: help setup test lint format seed up down demo clean dev run verify
 
 PYTHON ?= python
 PYTEST ?= pytest
@@ -7,6 +7,7 @@ RUFF ?= ruff
 help:
 	@echo "Argvtix: Enterprise AI Reliability Platform"
 	@echo "Available commands:"
+	@echo "  make verify    - Run independent verification suite and regenerate artifacts"
 	@echo "  make dev       - Run both backend and frontend simultaneously"
 	@echo "  make setup     - Install dependencies in virtual environment"
 	@echo "  make test      - Run test suite"
@@ -17,6 +18,9 @@ help:
 	@echo "  make down      - Stop Docker Compose services"
 	@echo "  make demo      - Run end-to-end demo scenario"
 	@echo "  make clean     - Remove cache files and build artifacts"
+
+verify:
+	$(PYTHON) scripts/verify.py
 
 dev:
 	$(PYTHON) run.py

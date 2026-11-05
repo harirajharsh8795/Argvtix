@@ -420,6 +420,7 @@ class JudgeCalibrator:
             pearson_correlation=pearson_r,
             mean_absolute_error=round(mae, 3),
             calibrated=is_calibrated,
+            model_name=getattr(self.adapter, "model_id", "unknown"),
             assessment_mode=self.assessment_mode,
             is_mock=self.is_mock,
             details=details,

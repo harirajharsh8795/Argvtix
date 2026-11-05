@@ -1,0 +1,32 @@
+{
+  "workstream": "WS-5",
+  "task": "CI Workflow Hardening, Sealed Bench Gate, and Planted Regression Proof",
+  "command": "python scripts/verify_ws5.py",
+  "git_sha": "0cd84cff4003f5e877c0a76422a01318f06971cc",
+  "date": "2026-11-05T15:51:51.205865+00:00",
+  "workflow_integrity": {
+    "ci_workflow_file": ".github\\workflows\\ci.yml",
+    "mypy_strict_no_suppression": true,
+    "sealed_set_bench_gate_present": true,
+    "readme_badge_check_step_present": true,
+    "frontend_lint_and_build_present": true,
+    "pip_audit_vulnerability_scan_present": true,
+    "trufflehog_secret_scan_present": true,
+    "verified": true
+  },
+  "planted_regression_proof": {
+    "regression_scenario": "Planted failing assertion in test suite (assert 1 == 2)",
+    "before_fix_status": "RED (FAILED)",
+    "before_fix_exit_code": 1,
+    "before_fix_message_caught": true,
+    "after_fix_status": "GREEN (PASSED)",
+    "after_fix_exit_code": 0,
+    "demonstration_success": true
+  },
+  "badge_validator_proof": {
+    "script": "scripts/check_readme_badge.py",
+    "exit_code": 0,
+    "output": "Collected Tests:   508\nREADME Badge Count: 508\nSUCCESS: README badge matches collected test count exactly.",
+    "verified": true
+  }
+}

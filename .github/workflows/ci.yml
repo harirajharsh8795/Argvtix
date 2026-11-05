@@ -49,6 +49,11 @@ jobs:
       - name: Bench Gate (accuracy & taxonomy evaluation)
         run: |
           python bench/runner.py --split both
+          python bench/runner.py --split sealed
+
+      - name: Verify README test count badge
+        run: |
+          python scripts/check_readme_badge.py
 
   frontend-lint-and-build:
     name: Frontend Lint & Build

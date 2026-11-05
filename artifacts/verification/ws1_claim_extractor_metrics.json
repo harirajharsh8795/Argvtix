@@ -1,0 +1,231 @@
+{
+  "workstream": "WS-1",
+  "task": "Claim Extractor Precision and Recall Evaluation",
+  "command": "python scripts/verify_ws1.py --extractor",
+  "git_sha": "0cd84cff4003f5e877c0a76422a01318f06971cc",
+  "date": "2026-11-05T15:50:22.614404+00:00",
+  "model": "deterministic-regex-fallback",
+  "total_cases": 30,
+  "positive_cases": 15,
+  "negative_control_cases": 15,
+  "true_positives": 12,
+  "false_positives": 3,
+  "false_negatives": 3,
+  "true_negatives": 12,
+  "precision": 80.0,
+  "recall": 80.0,
+  "f1_score": 80.0,
+  "specificity": 80.0,
+  "cases_evaluated": [
+    {
+      "id": "p01",
+      "text": "I have refunded $45.00 back to your credit card.",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p02",
+      "text": "Your order #8921 has been cancelled successfully.",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p03",
+      "text": "Maine aapka payment initiate kar diya hai, 24 ghante me credit hoga.",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p04",
+      "text": "Ticket #5543 has been escalated to Tier-3 Technical Engineering.",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p05",
+      "text": "Aapka package DEL-9823 successfully deliver ho gaya hai.",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p06",
+      "text": "\u0939\u092e\u0928\u0947 \u20b91,500 \u0915\u093e \u0930\u093f\u092b\u0902\u0921 \u092a\u094d\u0930\u094b\u0938\u0947\u0938 \u0915\u0930 \u0926\u093f\u092f\u093e \u0939\u0948\u0964",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p07",
+      "text": "The refund of $120.00 failed due to an expired debit card.",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p08",
+      "text": "Delivery attempt for shipment SHP-443 failed: customer was unavailable.",
+      "expected_claim": true,
+      "detected_claims_count": 0,
+      "status": "FN"
+    },
+    {
+      "id": "p09",
+      "text": "Account ACC-901 has been temporarily suspended due to security flags.",
+      "expected_claim": true,
+      "detected_claims_count": 0,
+      "status": "FN"
+    },
+    {
+      "id": "p10",
+      "text": "Database backup completed successfully at 04:00 UTC.",
+      "expected_claim": true,
+      "detected_claims_count": 0,
+      "status": "FN"
+    },
+    {
+      "id": "p11",
+      "text": "Aapki order request cancel kardi gayi hai.",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p12",
+      "text": "\u0906\u092a\u0915\u093e \u091f\u093f\u0915\u091f TKT-889 \u092c\u0902\u0926 \u0915\u0930 \u0926\u093f\u092f\u093e \u0917\u092f\u093e \u0939\u0948\u0964",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p13",
+      "text": "We have credited 50 loyalty points to your customer wallet.",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p14",
+      "text": "Payment of \u20b94,200 has been transferred to beneficiary account.",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "p15",
+      "text": "Item SKU-990 stock has been updated to 0 in warehouse B.",
+      "expected_claim": true,
+      "detected_claims_count": 1,
+      "status": "TP"
+    },
+    {
+      "id": "n01",
+      "text": "Hello! Welcome to ShopOps customer support. How can I assist you today?",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n02",
+      "text": "Namaste, main aapki kya sahayata kar sakta hoon?",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n03",
+      "text": "Could you please provide your 10-digit registered mobile number?",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n04",
+      "text": "I understand your frustration and am looking into the matter.",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n05",
+      "text": "\u0915\u0943\u092a\u092f\u093e \u0925\u094b\u0921\u093c\u093e \u092a\u094d\u0930\u0924\u0940\u0915\u094d\u0937\u093e \u0915\u0930\u0947\u0902, \u092e\u0948\u0902 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u091c\u093e\u0902\u091a \u0930\u0939\u093e \u0939\u0942\u0901\u0964",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n06",
+      "text": "Our refund policy allows returns within 30 days of purchase.",
+      "expected_claim": false,
+      "detected_claims_count": 1,
+      "status": "FP"
+    },
+    {
+      "id": "n07",
+      "text": "Thank you for contacting ACME IT Service Desk.",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n08",
+      "text": "Kya aap mujhe order number bata sakte hain?",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n09",
+      "text": "Have a great day ahead! Let us know if you need anything else.",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n10",
+      "text": "To reset your password, please click the link sent to your email.",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n11",
+      "text": "We take data privacy and customer security very seriously.",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n12",
+      "text": "\u0927\u0928\u094d\u092f\u0935\u093e\u0926! \u0906\u092a\u0915\u093e \u0926\u093f\u0928 \u0936\u0941\u092d \u0939\u094b\u0964",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n13",
+      "text": "I will check with our fulfillment partner and get back to you.",
+      "expected_claim": false,
+      "detected_claims_count": 0,
+      "status": "TN"
+    },
+    {
+      "id": "n14",
+      "text": "Please make sure your app is updated to version 2.4.",
+      "expected_claim": false,
+      "detected_claims_count": 1,
+      "status": "FP"
+    },
+    {
+      "id": "n15",
+      "text": "Sorry for the delay in response due to high queue volumes.",
+      "expected_claim": false,
+      "detected_claims_count": 1,
+      "status": "FP"
+    }
+  ]
+}

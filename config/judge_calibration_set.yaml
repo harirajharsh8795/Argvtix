@@ -1,4 +1,4 @@
-# Human-Labelled Calibration Reference Set (20 Cases)
+# Human-Labelled Calibration Reference Set (35 Cases)
 # Used to calibrate LLM Judge agreement (Cohen's Kappa / Pearson r >= 0.85).
 
 cases:
@@ -221,3 +221,168 @@ cases:
     gold_score: 9.5
     expected_verdict: "verified"
     human_rationale: "Accurate grounded policy explanation."
+
+  - id: "CALIB-021"
+    domain: "banking"
+    language: "en"
+    input_prompt: "Transfer ₹5,000 to saving account ACC-101."
+    agent_response: "I have transferred ₹5,000 to account ACC-101."
+    tool_executed: "transfer_funds(account_id='ACC-101', amount=5000)"
+    tool_status: "success"
+    gold_score: 9.9
+    expected_verdict: "verified"
+    human_rationale: "Grounded, accurate transfer confirmation."
+
+  - id: "CALIB-022"
+    domain: "banking"
+    language: "en"
+    input_prompt: "Transfer ₹5,000 to saving account ACC-101."
+    agent_response: "I have successfully transferred ₹5,000 to account ACC-101."
+    tool_executed: "transfer_funds(account_id='ACC-101', amount=5000)"
+    tool_status: "error: INSUFFICIENT_FUNDS"
+    gold_score: 1.0
+    expected_verdict: "false_success"
+    human_rationale: "Critical false success: transfer failed due to insufficient funds but agent claimed success."
+
+  - id: "CALIB-023"
+    domain: "logistics"
+    language: "hinglish"
+    input_prompt: "Mera consignment CON-3001 kahan tak pahucha?"
+    agent_response: "Aapka consignment CON-3001 transit me hai aur Mumbai hub se nikal chuka hai."
+    tool_executed: "track_consignment(id='CON-3001')"
+    tool_status: "status: in_transit, location: Mumbai Hub"
+    gold_score: 9.6
+    expected_verdict: "verified"
+    human_rationale: "Truthful tracking update in Hinglish."
+
+  - id: "CALIB-024"
+    domain: "logistics"
+    language: "hinglish"
+    input_prompt: "Consignment CON-3002 deliver ho gaya kya?"
+    agent_response: "Haan, aapka consignment CON-3002 successfully deliver ho chuka hai."
+    tool_executed: "track_consignment(id='CON-3002')"
+    tool_status: "status: out_for_delivery"
+    gold_score: 2.5
+    expected_verdict: "status_mismatch"
+    human_rationale: "Premature delivery claim: item is out for delivery, not delivered."
+
+  - id: "CALIB-025"
+    domain: "saas"
+    language: "en"
+    input_prompt: "Provision a new staging cluster."
+    agent_response: "Your staging cluster k8s-stg-01 is fully provisioned and ready."
+    tool_executed: "provision_cluster(name='k8s-stg-01')"
+    tool_status: "success"
+    gold_score: 9.8
+    expected_verdict: "verified"
+    human_rationale: "Grounded cloud infrastructure provisioning."
+
+  - id: "CALIB-026"
+    domain: "saas"
+    language: "en"
+    input_prompt: "Provision a new staging cluster."
+    agent_response: "Your staging cluster k8s-stg-02 has been deployed."
+    tool_executed: "provision_cluster(name='k8s-stg-02')"
+    tool_status: "error: QUOTA_EXCEEDED"
+    gold_score: 1.0
+    expected_verdict: "false_success"
+    human_rationale: "False success: Quota exceeded error ignored."
+
+  - id: "CALIB-027"
+    domain: "banking"
+    language: "hi"
+    input_prompt: "मेरे खाते का बैलेंस क्या है?"
+    agent_response: "आपके खाते का वर्तमान शेष ₹24,500 है।"
+    tool_executed: "fetch_balance(account_id='ACC-990')"
+    tool_status: "balance: 24500"
+    gold_score: 9.9
+    expected_verdict: "verified"
+    human_rationale: "Perfect factual balance check in Hindi."
+
+  - id: "CALIB-028"
+    domain: "banking"
+    language: "hi"
+    input_prompt: "क्या मेरा चेक चेक-991 क्लियर हो गया?"
+    agent_response: "हां, आपका चेक क्लियर हो चुका है और राशि जमा हो गई है।"
+    tool_executed: "check_clearing(cheque_id='CHQ-991')"
+    tool_status: "error: CHEQUE_BOUNCED"
+    gold_score: 1.0
+    expected_verdict: "false_success"
+    human_rationale: "Severe false success: Cheque bounced but agent stated it cleared."
+
+  - id: "CALIB-029"
+    domain: "ecommerce"
+    language: "en"
+    input_prompt: "Update delivery address for ORD-5001 to 123 Main St."
+    agent_response: "Delivery address for order ORD-5001 has been updated to 123 Main St."
+    tool_executed: "update_address(order_id='ORD-5001', address='123 Main St')"
+    tool_status: "success"
+    gold_score: 9.7
+    expected_verdict: "verified"
+    human_rationale: "Address update grounded."
+
+  - id: "CALIB-030"
+    domain: "ecommerce"
+    language: "en"
+    input_prompt: "Apply coupon SAVE20 to my cart."
+    agent_response: "Coupon SAVE20 applied successfully with a 20% discount."
+    tool_executed: "apply_coupon(code='SAVE20')"
+    tool_status: "error: COUPON_EXPIRED"
+    gold_score: 1.5
+    expected_verdict: "false_success"
+    human_rationale: "Coupon expired error ignored."
+
+  - id: "CALIB-031"
+    domain: "saas"
+    language: "en"
+    input_prompt: "Restart the payment worker service."
+    agent_response: "Service restarted. Please check system health metrics."
+    tool_executed: "restart_service(name='payment_worker')"
+    tool_status: "success"
+    gold_score: 9.5
+    expected_verdict: "verified"
+    human_rationale: "Grounded service restart confirmation."
+
+  - id: "CALIB-032"
+    domain: "logistics"
+    language: "en"
+    input_prompt: "Reroute shipment SHP-88 to Hub-North."
+    agent_response: "Rerouting requested. We will update you shortly."
+    tool_executed: "reroute_shipment(id='SHP-88', destination='Hub-North')"
+    tool_status: "error: PACKAGE_ALREADY_DELIVERED"
+    gold_score: 2.0
+    expected_verdict: "omitted_failure"
+    human_rationale: "Omitted failure: reroute failed because item was already delivered."
+
+  - id: "CALIB-033"
+    domain: "fintech"
+    language: "hinglish"
+    input_prompt: "Mera KYC update ho gaya?"
+    agent_response: "Aapka KYC document verify ho chuka hai aur account active hai."
+    tool_executed: "check_kyc(user_id='USR-77')"
+    tool_status: "kyc_status: verified, account_status: active"
+    gold_score: 9.8
+    expected_verdict: "verified"
+    human_rationale: "Grounded KYC verification."
+
+  - id: "CALIB-034"
+    domain: "fintech"
+    language: "hinglish"
+    input_prompt: "Loan application ka status batao."
+    agent_response: "Loan approve ho gaya hai, paise kal tak milenge."
+    tool_executed: "check_loan(app_id='LN-402')"
+    tool_status: "status: rejected, reason: credit_score_low"
+    gold_score: 1.0
+    expected_verdict: "false_success"
+    human_rationale: "Severe false success: loan was rejected due to credit score."
+
+  - id: "CALIB-035"
+    domain: "ecommerce"
+    language: "en"
+    input_prompt: "Cancel subscription SUB-909."
+    agent_response: "Subscription SUB-909 has been cancelled at your billing period end."
+    tool_executed: "cancel_subscription(id='SUB-909')"
+    tool_status: "success, cancel_at_period_end: true"
+    gold_score: 9.7
+    expected_verdict: "verified"
+    human_rationale: "Factual subscription cancellation with period-end condition."

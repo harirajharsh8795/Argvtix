@@ -114,6 +114,58 @@ flowchart TD
 
 ---
 
+### 3.3 End-to-End Enterprise Agent Outcome Assurance Topology
+
+```mermaid
+flowchart TD
+    subgraph Ingestion ["1. Inbound Ingestion and Sanitization"]
+        Customer["Customer Ticket (English / Hindi / Hinglish)"] --> PIIFilter["Inbound PII Masker\n(Aadhaar, Phone, Email, PAN, UPI)"]
+        PIIFilter --> SanitizedInput["Sanitized Ticket Text"]
+    end
+
+    subgraph AgentCore ["2. Agent Reasoning and Tool Gateway Boundary"]
+        SanitizedInput --> Agent["ShopOps Agent (LangGraph)"]
+        Agent --> Intent["Classify Intent and RAG SOP Retriever"]
+        Intent --> GuardReq["Pre-Execution Action Proposal"]
+        GuardReq --> Guard["ActionGuard Policy Engine\n(ACT-01 to ACT-09 Invariants)"]
+        
+        Guard -->|ALLOW| ExecTool["Execute Tool via ToolGatewayClient"]
+        Guard -->|ASK_HUMAN| HumanQ["Approval Queue Record"]
+        Guard -->|BLOCK| BlockHandler["Block Handler (Safe Rejection)"]
+        
+        ExecTool --> GatewayAPI["Tool Gateway (Isolated Subprocess / HTTP)"]
+    end
+
+    subgraph TenantDB ["3. Structural Tenant Data Layer"]
+        GatewayAPI --> TenantSession["TenantScopedSession\n(Strict project_id Injection and Postgres RLS)"]
+        TenantSession --> CoreTables[("Orders / Payments / Refunds / Inventory")]
+    end
+
+    subgraph AssuranceLoop ["4. Continuous Evaluation and Integrity Assurance"]
+        Agent --> DLP["Outbound DLP Sanitizer\n(Prompt Leak and Stack Trace Filter)"]
+        DLP --> Output["Customer Response"]
+        
+        Agent -.-> TraceRec["Trace Recorder (OTel Spans)"]
+        TraceRec --> Verifier["Claim-vs-State Verifier\n(Checks Assertions vs DB State)"]
+        CoreTables -.-> Watchdog["Post-Execution Watchdog\n(8 Data Faults + 4 Integration Discrepancies)"]
+        
+        Verifier --> Alerts["Alert Dispatcher (Slack / Email / Webhook)"]
+        Watchdog --> Alerts
+    end
+
+    subgraph ScoutSystem ["5. Scout Permission-First Black-Box Auditing"]
+        SignedScope["Signed scope.yaml\n(T0-T3 Tiers, Allowed Hosts/Paths)"] --> ScoutRunner["Scout Safety Runner\n(Token Bucket Rate Limiter and Circuit Breaker)"]
+        ScoutRunner --> Adapters["Target Adapters\n(Playwright Widget and HTTP Chat)"]
+        Adapters --> EgressCheck{"Egress Allowlist?"}
+        EgressCheck -->|Yes| TargetBot["Self-Hosted / Staging Bot Target"]
+        EgressCheck -->|No| EgressBlock["Egress Blocked (Host Refusal Logged)"]
+        ScoutRunner --> HumanSignOff["Human Review Sign-off Gate\n(No Auto-Outreach)"]
+        HumanSignOff --> AuditReport["Scout Audit Report (Markdown/HTML)"]
+    end
+```
+
+---
+
 ## 4. Database Design & Optimization
 
 ### 4.1 Core Schema Entities

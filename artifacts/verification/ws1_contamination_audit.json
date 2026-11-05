@@ -1,0 +1,17 @@
+{
+  "workstream": "WS-1",
+  "task": "Contamination Audit",
+  "command": "python scripts/verify_ws1.py --contamination",
+  "git_sha": "0cd84cff4003f5e877c0a76422a01318f06971cc",
+  "date": "2026-11-05T15:50:22.291957+00:00",
+  "model": "deterministic-git-audit",
+  "held_out_status": "CONTAMINATED",
+  "declaration": "Prior held-out set (bench/cases/held_out_set.yaml) is officially declared CONTAMINATED. Git history reveals that commit 4820226 and commit 0cd84cf modified src/argvtix/evals/claims/extractor.py by injecting Hindi/Hinglish domain vocabulary (e.g., '\u0921\u093f\u0932\u0940\u0935\u0930', '\u0907\u0928\u093f\u0936\u093f\u090f\u091f', '\u0915\u094d\u0930\u0947\u0921\u093f\u091f', 'update kar diya') after reviewing held-out failures.",
+  "post_creation_extractor_commits": [
+    "0cd84cf feat(core): complete audit remediation and blueprint gap closure (WS-1 to WS-7)",
+    "4820226 feat(evals): implement Step 3 evaluation quality hardening (items 8-10)",
+    "b3ee82f style: apply ruff formatting and configure lint ignores for CI",
+    "a04097c feat(rebrand): rebrand platform to Argvtix and flatten repository structure"
+  ],
+  "remediation": "A completely new, frozen 60-case SEALED benchmark set has been created under bench/cases/sealed/sealed_set.yaml with sha256 checksum frozen before running."
+}
