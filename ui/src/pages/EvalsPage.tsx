@@ -8,6 +8,7 @@ import {
   BarChart2,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { DataUnavailable } from '../components/DataUnavailable';
 
 export const EvalsPage: React.FC = () => {
   // Claim Verifier state
@@ -37,6 +38,7 @@ export const EvalsPage: React.FC = () => {
   // Golden eval state
   const [goldenResult, setGoldenResult] = useState<any | null>(null);
   const [runningGolden, setRunningGolden] = useState(false);
+  const [goldenError, setGoldenError] = useState<string | null>(null);
 
   const [claimError, setClaimError] = useState<string | null>(null);
 
@@ -72,14 +74,14 @@ export const EvalsPage: React.FC = () => {
     try {
       const res = await api.runEvals();
       setGoldenResult(res);
-    } catch {
-      setGoldenResult({
-        total_cases: 80,
-        passed: 79,
-        failed: 1,
-        accuracy_percent: 98.75,
-        latency_p95_ms: 54,
-      });
+    } catch (err: any) {
+      setGoldenError(err?.message || 'Evaluation unavailable');
+      setGoldenResult(null);
+
+
+
+
+
     } finally {
       setRunningGolden(false);
     }
@@ -549,6 +551,14 @@ export const EvalsPage: React.FC = () => {
             </div>
           </div>
 
+          {goldenError && (
+            <DataUnavailable
+              title="Evaluation Runner Unavailable"
+              message={goldenError}
+              onRetry={handleRunGolden}
+            />
+          )}
+
           {/* Results Display */}
           {goldenResult && (
             <div className="animate-fade-in-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', padding: '16px', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)' }}>
@@ -557,7 +567,7 @@ export const EvalsPage: React.FC = () => {
                   OVERALL ACCURACY
                 </div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent-success)', marginTop: '4px' }}>
-                  {goldenResult.overall_accuracy ? goldenResult.overall_accuracy.toFixed(1) : '94.2'}%
+                  {goldenResult.overall_accuracy != null ? `${goldenResult.overall_accuracy.toFixed(1)}%` : '—'}
                 </div>
               </div>
 
@@ -566,7 +576,7 @@ export const EvalsPage: React.FC = () => {
                   GUARD ALIGNMENT
                 </div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent-primary)', marginTop: '4px' }}>
-                  {goldenResult.guard_alignment ? goldenResult.guard_alignment.toFixed(1) : '98.8'}%
+                  {goldenResult.guard_alignment != null ? `${goldenResult.guard_alignment.toFixed(1)}%` : '—'}
                 </div>
               </div>
 
@@ -575,7 +585,7 @@ export const EvalsPage: React.FC = () => {
                   P95 LATENCY
                 </div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent-cyan)', marginTop: '4px' }}>
-                  {goldenResult.p95_latency_ms ? goldenResult.p95_latency_ms.toFixed(0) : '245'} ms
+                  {goldenResult.p95_latency_ms != null ? `${goldenResult.p95_latency_ms.toFixed(0)} ms` : '—'}
                 </div>
               </div>
 
@@ -584,7 +594,7 @@ export const EvalsPage: React.FC = () => {
                   COST / 100 QUERIES
                 </div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent-warning)', marginTop: '4px' }}>
-                  ${goldenResult.cost_per_100_usd ? goldenResult.cost_per_100_usd.toFixed(4) : '0.0042'}
+                  {goldenResult.cost_per_100_usd != null ? `$${goldenResult.cost_per_100_usd.toFixed(4)}` : '—'}
                 </div>
               </div>
             </div>

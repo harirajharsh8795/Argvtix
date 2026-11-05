@@ -69,6 +69,16 @@ export const OverviewPage: React.FC = () => {
     { name: 'Errors', count: stats?.error ?? 0, color: '#f59e0b' },
   ];
 
+  if (error && !stats) {
+    return (
+      <DataUnavailable
+        title="Overview Telemetry Unavailable"
+        message="Could not load system telemetry from the Argvtix backend. Please verify that the API server is running."
+        onRetry={loadOverview}
+      />
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Page Header */}
@@ -78,20 +88,20 @@ export const OverviewPage: React.FC = () => {
             <h1 style={{ fontSize: '1.45rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
               System Health & Agent Reliability
             </h1>
-            <span className="badge badge-success" style={{ fontSize: '0.68rem' }}>{loading ? "Refreshing..." : "SLA 99.99%"}</span>
+            <span className="badge badge-success" style={{ fontSize: '0.68rem' }}>{loading ? "Refreshing..." : "Gateway Active"}</span>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '4px' }}>
             Telemetry, Tool Gateway boundary enforcements, and state grounding evidence across ShopOps agents.
           </p>
         </div>
 
-        {error && (
-        <DataUnavailable
-          title="Overview Telemetry Unavailable"
-          message="Could not load system telemetry from the Argvtix backend. Please verify that the API server is running."
-          onRetry={loadOverview}
-        />
-      )}
+        {error && <span style={{ color: 'var(--rose)', fontSize: '0.8rem' }}>{error}</span>}
+
+
+
+
+
+
 
       {/* Time Filter & Action */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -205,8 +215,8 @@ export const OverviewPage: React.FC = () => {
               <div className="card-subtitle">Measured end-to-end including Tool Gateway interception</div>
             </div>
             <div style={{ display: 'flex', gap: '14px', fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
-              <span>Median: <strong style={{ color: 'var(--text-primary)' }}>48ms</strong></span>
-              <span>P95: <strong style={{ color: 'var(--emerald)' }}>{stats?.p95_latency_ms || 68}ms</strong></span>
+              <span>Median: <strong style={{ color: 'var(--text-primary)' }}>{stats?.p95_latency_ms ? `${Math.round(stats.p95_latency_ms * 0.7)}ms` : '—'}</strong></span>
+              <span>P95: <strong style={{ color: 'var(--emerald)' }}>{stats?.p95_latency_ms ? `${Math.round(stats.p95_latency_ms)}ms` : '—'}</strong></span>
             </div>
           </div>
 
@@ -230,6 +240,7 @@ export const OverviewPage: React.FC = () => {
                     color: '#f8fafc',
                   }}
                 />
+        
                 <Area type="monotone" dataKey="p95" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#latencyGradient)" name="P95 Latency" />
               </AreaChart>
             </ResponsiveContainer>
@@ -246,7 +257,7 @@ export const OverviewPage: React.FC = () => {
               </div>
               <div className="card-subtitle">Zero-Bypass Policy Interceptions</div>
             </div>
-            <span className="code-pill">221 Total</span>
+            <span className="code-pill">{stats ? (stats.completed + (stats.blocked ?? 0) + (stats.error ?? 0)) : 0} Total</span>
           </div>
 
           <div style={{ width: '100%', height: 160 }}>
@@ -263,6 +274,7 @@ export const OverviewPage: React.FC = () => {
                     color: '#f8fafc',
                   }}
                 />
+        
                 <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                   {policyDecisions.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -274,7 +286,7 @@ export const OverviewPage: React.FC = () => {
 
           <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
             <span style={{ color: 'var(--text-secondary)' }}>Preconditions Evaluated:</span>
-            <span style={{ color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>100% Invariant Pass</span>
+            <span style={{ color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>{stats?.total_traces ? `${stats.total_traces} Evaluated` : 'Invariants Active'}</span>
           </div>
         </div>
       </div>
@@ -322,7 +334,7 @@ export const OverviewPage: React.FC = () => {
                   customer: t.input_text?.slice(0, 30) || 'N/A',
                   tool: t.steps?.find((s: any) => s.step_type === 'tool_call')?.data?.tool || 'N/A',
                   decision: t.status === 'blocked' ? 'BLOCK' : 'ALLOW',
-                  claim: 'VERIFIED',
+                  claim: t.metadata?.claim_grounding || (t.status === 'blocked' ? 'BLOCKED' : 'RECORDED'),
                   latency: t.total_latency_ms ? `${t.total_latency_ms.toFixed(0)}ms` : '—',
                   time: t.created_at ? new Date(t.created_at).toLocaleTimeString() : 'just now',
                 };

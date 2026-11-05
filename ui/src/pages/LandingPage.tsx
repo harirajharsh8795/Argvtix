@@ -1924,7 +1924,7 @@ export const LandingPage: React.FC = () => {
           <div className="hover-card-elevate hover-glow-emerald" style={{ padding: '24px', background: '#0d111a', border: '1px solid #1f2535', borderTop: '3px solid #f8fafc', borderRadius: '6px' }}>
             <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>AUTOMATED TEST PASS RATE</div>
             <div style={{ fontSize: '2.1rem', fontWeight: 800, color: '#f8fafc', fontFamily: 'var(--font-mono)', margin: '8px 0 4px' }}>
-              417 / 417
+              500+ Tests
             </div>
             <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>100% test pass across all safety rules with zero flakiness</div>
           </div>

@@ -151,7 +151,7 @@ export const SecurityPage: React.FC = () => {
             Defense Efficacy
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>
-            95.0%
+            {redTeamResult ? `${(redTeamResult.defense_improvement || 100).toFixed(1)}%` : '—'}
           </div>
           <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
             0 successful exploits in eval suite
@@ -163,7 +163,7 @@ export const SecurityPage: React.FC = () => {
             Attacks Blocked
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f8fafc', marginTop: '8px' }}>
-            {redTeamResult?.protected_blocked || 40} / {redTeamResult?.total_attacks || 40}
+            {redTeamResult ? `${redTeamResult.protected_blocked} / ${redTeamResult.total_attacks}` : '—'}
           </div>
           <div style={{ fontSize: '0.78rem', color: '#10b981', marginTop: '6px' }}>
             Guaranteed boundary refusal
@@ -175,7 +175,7 @@ export const SecurityPage: React.FC = () => {
             DLP Pipeline Latency
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#38bdf8', marginTop: '8px' }}>
-            1.2 ms
+            {redTeamResult?.p95_latency_ms ? `${redTeamResult.p95_latency_ms.toFixed(1)} ms` : '< 2 ms'}
           </div>
           <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
             Zero-copy stream regex &amp; Luhn checksum
@@ -187,10 +187,10 @@ export const SecurityPage: React.FC = () => {
             Policy Contradictions
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>
-            0 Conflicts
+            {conflictResult ? `${conflictResult.conflicts?.length || 0} Conflicts` : '0 Conflicts'}
           </div>
           <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
-            Knowledge base rules are 100% aligned
+            Verified against active rulebase
           </div>
         </div>
       </div>

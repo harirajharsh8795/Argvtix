@@ -35,6 +35,26 @@ class GuardCheckResponse(BaseModel):
     policy_rule_triggered: str | None = None
 
 
+ALLOWED_TOOLS = {
+    "issue_refund",
+    "refund",
+    "cancel_order",
+    "cancel",
+    "get_order",
+    "check_order_status",
+    "order_status",
+    "track_shipment",
+    "track",
+    "get_customer",
+    "update_address",
+    "database_snapshot",
+    "lookup_policy",
+    "policy_lookup",
+    "rag_search",
+    "check_refund",
+}
+
+
 class ActionGuard:
     """Pre-action safety guardian."""
 
@@ -42,6 +62,16 @@ class ActionGuard:
 
     def evaluate(self, request: GuardCheckRequest, db: Session) -> GuardCheckResponse:
         """Evaluate action safety against database state and business policies."""
+        # -1. Whitelisted tools check
+        tool = (request.tool_name or "").lower()
+        if tool and tool not in ALLOWED_TOOLS:
+            return GuardCheckResponse(
+                decision=GuardDecision.BLOCK,
+                reason=f"ACT-07: Unregistered or unauthorized tool '{request.tool_name}'.",
+                risk_level=Severity.HIGH,
+                policy_rule_triggered="whitelisted_tool",
+            )
+
         # 0. Check negative amount
         if request.amount < 0:
             return GuardCheckResponse(
@@ -72,9 +102,8 @@ class ActionGuard:
                 policy_rule_triggered="verify_customer_ownership",
             )
 
-        # 3. Check order state preconditions (e.g. cancellation requires pending/processing)
+        # 3. Check order state preconditions
         workflow = (request.workflow_type or "").lower()
-        tool = (request.tool_name or "").lower()
         if "cancel" in workflow or "cancel" in tool:
             if (order.status or "").lower() not in ("pending", "processing"):
                 return GuardCheckResponse(
@@ -85,6 +114,29 @@ class ActionGuard:
                     risk_level=Severity.HIGH,
                     policy_rule_triggered="order_cancellable_state",
                 )
+
+        if "refund" in workflow or "refund" in tool:
+            if (order.status or "").lower() == "cancelled":
+                return GuardCheckResponse(
+                    decision=GuardDecision.BLOCK,
+                    reason=f"ACT-09: Cannot issue refund on already cancelled order {request.order_id}.",
+                    risk_level=Severity.HIGH,
+                    policy_rule_triggered="cancelled_order_refund",
+                )
+
+            # Return window enforcement (30-day limit)
+            if order.created_at:
+                order_dt = order.created_at
+                now_utc = datetime.now(UTC)
+                if order_dt.tzinfo is None:
+                    order_dt = order_dt.replace(tzinfo=UTC)
+                if (now_utc - order_dt).days > 30:
+                    return GuardCheckResponse(
+                        decision=GuardDecision.BLOCK,
+                        reason=f"ACT-08: Order {request.order_id} is outside the 30-day return window (created {(now_utc - order_dt).days} days ago).",
+                        risk_level=Severity.HIGH,
+                        policy_rule_triggered="return_window_expired",
+                    )
 
         # 4. Check customer velocity (max 2 refunds per 60 minutes)
         if "refund" in workflow or "refund" in tool:

@@ -279,11 +279,19 @@ class ClaimExtractor:
     def _extract_refund_claim(self, sent: str, sent_lower: str) -> Claim | None:
         keywords = [
             "refund",
+            "refunded",
             "रिफंड",
             "vaapsi",
             "paisa wapas",
             "credited back",
+            "credited",
+            "क्रेडिट",
+            "इनिशिएट",
+            "शुरू",
+            "initiate",
+            "initiated",
             "initiated your refund",
+            "refund ho",
         ]
         if not any(k in sent_lower for k in keywords):
             return None
@@ -366,6 +374,16 @@ class ClaimExtractor:
             "deliver ho gaya",
             "bheja gaya",
             "पहुंचा",
+            "पहुंचेगा",
+            "डिलीवर",
+            "डिलिवरी",
+            "डिलीवरी",
+            "होल्ड",
+            "hold",
+            "rto",
+            "return to origin",
+            "serviceable",
+            "delay",
         ]
         if not any(k in sent_lower for k in keywords):
             return None
@@ -374,11 +392,15 @@ class ClaimExtractor:
 
         status = (
             "delivered"
-            if any(w in sent_lower for w in ["delivered", "deliver ho gaya", "पहुंचा"])
+            if any(
+                w in sent_lower
+                for w in ["delivered", "deliver ho gaya", "पहुंचा", "डिलीवर", "डिलिवरी"]
+            )
             else (
                 "shipped"
                 if any(
-                    w in sent_lower for w in ["shipped", "dispatched", "in transit", "bheja gaya"]
+                    w in sent_lower
+                    for w in ["shipped", "dispatched", "in transit", "bheja gaya", "पहुंचेगा"]
                 )
                 else "active"
             )
@@ -420,7 +442,20 @@ class ClaimExtractor:
         )
 
     def _extract_payment_claim(self, sent: str, sent_lower: str) -> Claim | None:
-        keywords = ["payment", "भुगतान", "charge", "debited", "processed", "transfer"]
+        keywords = [
+            "payment",
+            "भुगतान",
+            "charge",
+            "debited",
+            "processed",
+            "transfer",
+            "कट गए",
+            "कट गया",
+            "cut gaye",
+            "emi",
+            "balance",
+            "fee",
+        ]
         if not any(k in sent_lower for k in keywords):
             return None
 
@@ -452,6 +487,9 @@ class ClaimExtractor:
             "failed to",
             "nahi kar sakta",
             "nahi kar sakte",
+            "nahi ho paya",
+            "nahi ho saka",
+            "nahi ho sakta",
             "nahin kar sakte",
             "asheel",
             "asafal",
@@ -471,6 +509,42 @@ class ClaimExtractor:
                 entity_id=eid,
                 claimed_status="failed",
                 is_success_claimed=False,
+                confidence=0.85,
+            )
+
+        success_action_words = [
+            "update kar diya",
+            "updated",
+            "schedule ho gaya",
+            "scheduled",
+            "rerouted",
+            "redirected",
+            "unfreezed",
+            "upgraded",
+            "switched",
+            "logged",
+            "filed",
+            "हो गया है",
+            "कर दिया गया है",
+            "कर दिया है",
+            "बदल दिया",
+            "confirmed",
+            "approved",
+            "has been approved",
+            "settled",
+            "ho chuka hai",
+            "ho gaya hai",
+            "kar diya gaya",
+        ]
+        if any(w in sent_lower for w in success_action_words):
+            eid, etype = self._extract_entity_id(sent)
+            return Claim(
+                source_text=sent,
+                claim_type=ClaimType.ACTION_TAKEN,
+                entity_type=etype,
+                entity_id=eid,
+                claimed_status="completed",
+                is_success_claimed=True,
                 confidence=0.85,
             )
         return None

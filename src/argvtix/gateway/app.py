@@ -175,30 +175,43 @@ is_production = _env_name in ("production", "prod", "staging")
 def verify_startup_configuration() -> None:
     """Validate critical environment configuration and startup invariants.
 
-    Raises RuntimeError if a required production variable is missing or insecure.
+    Collects and lists every missing or insecure variable in a single comprehensive error.
     """
-    env = os.getenv("ENVIRONMENT", os.getenv("ARGVTIX_ENV", "development")).lower()
+    from argvtix.security.auth import get_config_with_alias
+
+    env = get_config_with_alias("ENVIRONMENT", "ARGVTIX_ENV", "development").lower()
     is_prod = env in ("production", "prod", "staging")
 
     if is_prod:
+        errors: list[str] = []
         from argvtix.db.session import DATABASE_URL
 
         if not DATABASE_URL or DATABASE_URL.startswith("sqlite"):
-            raise RuntimeError(
-                "CRITICAL PRODUCTION CONFIGURATION ERROR: Production environment detected, but DATABASE_URL "
-                "is missing or pointing to SQLite ('sqlite:///...'). Production requires a managed database (PostgreSQL)."
+            errors.append(
+                "DATABASE_URL: Production requires a managed PostgreSQL database ('postgresql://...'). "
+                f"Currently configured: pointing to SQLite '{DATABASE_URL}'"
             )
-        from argvtix.security.auth import get_jwt_secret_key
 
-        get_jwt_secret_key()
+        try:
+            from argvtix.security.auth import get_jwt_secret_key
 
-        admin_pass = os.getenv(
-            "ARGVTIX_ADMIN_PASSWORD", os.getenv("PROOFLINE_ADMIN_PASSWORD", "")
+            get_jwt_secret_key()
+        except Exception as e:
+            errors.append(f"ARGVTIX_JWT_SECRET: {e}")
+
+        admin_pass = get_config_with_alias(
+            "ARGVTIX_ADMIN_PASSWORD", "PROOFLINE_ADMIN_PASSWORD", ""
         ).strip()
         if not admin_pass:
+            errors.append(
+                "ARGVTIX_ADMIN_PASSWORD: Administrative credentials required for production startup (ARGVTIX_ADMIN_PASSWORD is not configured)."
+            )
+
+        if errors:
+            formatted_errors = "\n".join(f"  - {err}" for err in errors)
             raise RuntimeError(
-                "CRITICAL PRODUCTION CONFIGURATION ERROR: Production environment detected, but ARGVTIX_ADMIN_PASSWORD "
-                "is not configured. Administrative credentials are required for production startup."
+                f"CRITICAL PRODUCTION CONFIGURATION ERROR ({len(errors)} invariant failure(s)):\n"
+                f"{formatted_errors}"
             )
 
 
@@ -720,7 +733,9 @@ def get_trace(
 
 @app.post("/api/v1/guard/check", response_model=GuardCheckResponse, tags=["Guard"])
 def check_action_guard(
-    request: GuardCheckRequest, db: Session = Depends(get_db)
+    request: GuardCheckRequest,
+    db: Session = Depends(get_db),
+    user: TokenPayload = Depends(get_current_user),
 ) -> GuardCheckResponse:
     """Evaluate whether an agent tool call or business action satisfies safety guards."""
     res = guard_engine.evaluate(request, db)
@@ -831,6 +846,7 @@ class RunRegressionRequest(BaseModel):
 def run_evaluations(
     request: RunEvalRequest = RunEvalRequest(),
     db: Session = Depends(get_db),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Run golden benchmark evaluations and return performance summary."""
     cases = (
@@ -869,6 +885,7 @@ def run_evaluations(
 def run_regression_check(
     request: RunRegressionRequest = RunRegressionRequest(),
     db: Session = Depends(get_db),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Run regression comparison between baseline and candidate configurations."""
     cases = (
@@ -1341,7 +1358,7 @@ class AuthTokenRequest(BaseModel):
     username: str
     password: str
     project_id: str = "default"
-    role: str = "admin"
+    role: str = "viewer"
 
 
 class ReconcileRequest(BaseModel):
@@ -1413,7 +1430,7 @@ def get_anomaly_report_endpoint(
 def run_reconciliation_endpoint(
     request: ReconcileRequest = ReconcileRequest(),
     db: Session = Depends(get_db),
-    user: TokenPayload = Depends(get_current_user),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Executes cross-system reconciliation audit across DB, CRM, and ERP."""
     engine_inst = ReconciliationEngine(db=db)
@@ -1450,7 +1467,7 @@ def get_alerts_endpoint(
 @app.post("/api/v1/watchdog/alerts", tags=["Watchdog Alerts"])
 def create_alert_endpoint(
     request: AlertCreateRequest,
-    user: TokenPayload = Depends(get_current_user),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Manually dispatch an alert event into the multi-channel pipeline."""
     try:
@@ -1530,7 +1547,7 @@ def list_scout_probes_endpoint(
 @app.post("/api/v1/scout/run", tags=["Argvtix Scout"])
 def run_scout_audit_endpoint(
     request: ScoutRunRequest,
-    user: TokenPayload = Depends(get_current_user),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Executes permission-governed security & reliability audit against target agent."""
     safety_ctrl = ScoutSafetyController(
@@ -1588,7 +1605,7 @@ def run_scout_audit_endpoint(
 @app.post("/api/v1/scout/abort", tags=["Argvtix Scout"])
 def abort_scout_audit_endpoint(
     request: ScoutAbortRequest = ScoutAbortRequest(),
-    user: TokenPayload = Depends(get_current_user),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Emergency kill switch: Halts all running Scout probes and audits within 5 seconds."""
     halted_count = 0
@@ -1654,7 +1671,7 @@ def get_scout_report_endpoint(
 def signoff_scout_report_endpoint(
     report_id: str,
     request: ScoutSignoffRequest,
-    user: TokenPayload = Depends(get_current_user),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Human review gate sign-off for a Scout audit report."""
     report = scout_reports.get(report_id)
@@ -1691,7 +1708,7 @@ class BenchmarkRunRequest(BaseModel):
 @app.post("/api/v1/benchmarks/run", tags=["Benchmarks"])
 def run_benchmark_endpoint(
     request: BenchmarkRunRequest = BenchmarkRunRequest(),
-    user: TokenPayload = Depends(get_current_user),
+    user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """
     Run the golden evaluation suite across multiple LLM adapters.

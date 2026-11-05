@@ -3,7 +3,7 @@
 > **"AI ne kya kiya, kya galat hua, aur naya version behtar hai ya nahi."**  
 > Record, Guard, Evaluate, and Watch your AI agents — all in one platform.
 
-[![Tests](https://img.shields.io/badge/tests-419%20passing-brightgreen)](#results-scoreboard)
+[![Tests](https://img.shields.io/badge/tests-505%20passing-brightgreen)](#results-scoreboard)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18-61dafb)](https://react.dev)
@@ -47,9 +47,9 @@ Customer Ticket ──→ AI Agent (ShopOps) ──→ Business DB
 |--------|-------------|--------|
 | **A. Trace Engine** | Records every AI step (7 step types), Pydantic v2 schemas, OTel export | ✅ Complete |
 | **B. Action Guard** | Pre-action safety: customer verification, duplicate prevention, ₹10K approval | ✅ Complete |
-| **C. Silent Data Watchdog** | 6 core integrity rules, ledger reconciliation & statistical IQR anomalies | ✅ Complete |
+| **C. Silent Data Watchdog** | 8 data fault rules, 4 cross-system reconciliations & statistical IQR anomalies | ✅ Complete |
 | **D. Platform Gateway** | FastAPI REST & WS, JWT RBAC, Tenant isolation, rate limiting | ✅ Complete |
-| **E. Eval + Regression** | Argvtix Bench (60 cases), Claim-vs-State Verifier, pass^k reliability | ✅ Complete |
+| **E. Eval + Regression** | Argvtix Bench (102 cases: 40 dev, 62 held-out), Claim-vs-State Verifier, pass^k reliability | ✅ Complete |
 
 ---
 
@@ -59,14 +59,14 @@ Customer Ticket ──→ AI Agent (ShopOps) ──→ Business DB
 
 | Metric | Target | Actual | Week / Source |
 |--------|--------|--------|---------------|
-| Automated Test Pass Rate | 100% | **419 / 419 passed (100%)** | `pytest tests/` |
+| Automated Test Pass Rate | 100% | **505 / 505 passed (100%)** | `pytest tests/` |
 | Trace Engine Coverage | 100% | **100% (7 step types)** | `tests/test_trace/` |
-| Watchdog Detection (DB Integrity) | 100% | **6/6 rules verified** | `tests/test_watchdog/` |
+| Watchdog Detection (DB Integrity) | 100% | **8/8 data faults verified** | `tests/test_watchdog/` |
 | Reconciliation Detection | 100% | **4/4 discrepancies caught** | `tests/test_watchdog/` |
 | Bench Overall Accuracy (Dev) | >= 85% | **100.0%** | `bench/runner.py` |
-| Bench Overall Accuracy (Held-out) | >= 85% | **95.0%** | `bench/runner.py` |
+| Bench Overall Accuracy (Held-out) | >= 85% | **96.8%** | `bench/runner.py` |
 | Bench Precision (Dev / Held-out) | >= 85% | **100.0% / 100.0%** | `bench/runner.py` |
-| Bench Recall (Dev / Held-out) | >= 80% | **100.0% / 95.0%** | `bench/runner.py` |
+| Bench Recall (Dev / Held-out) | >= 80% | **100.0% / 96.8%** | `bench/runner.py` |
 | Unauthorized / Wrong Actions Blocked | 100% | **20/20 blocked** | `tests/property/` |
 | Unapproved DB Writes Permitted | 0 | **0** | `tests/test_independent_audit.py` |
 | Cross-Tenant Query Isolation | 100% | **100% (404 on cross-tenant)** | `tests/test_security/` |

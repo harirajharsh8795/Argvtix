@@ -48,7 +48,7 @@ jobs:
 
       - name: Bench Gate (accuracy & taxonomy evaluation)
         run: |
-          python bench/runner.py --split dev
+          python bench/runner.py --split both
 
   frontend-lint-and-build:
     name: Frontend Lint & Build

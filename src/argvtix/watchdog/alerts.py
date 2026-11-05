@@ -51,9 +51,19 @@ class AlertPayload(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    def fingerprint(self) -> str:
+        """Computes deduplication fingerprint based on source, severity, title, and key entity."""
+        entity = (
+            self.metadata.get("entity_id")
+            or self.metadata.get("order_id")
+            or self.metadata.get("customer_id")
+            or ""
+        )
+        return f"{self.source}:{self.severity.value}:{self.title}:{entity}"
+
 
 class AlertDispatcher:
-    """Manages routing, formatting, and dispatching alerts to configured sinks."""
+    """Manages routing, formatting, deduplicating, throttling, and dispatching alerts to configured sinks."""
 
     def __init__(
         self,
@@ -62,6 +72,8 @@ class AlertDispatcher:
         email_recipients: list[str] | None = None,
         http_post_fn: Callable[[str, dict[str, Any], float], bool] | None = None,
         smtp_sender_fn: Callable[[str, list[str], EmailMessage], bool] | None = None,
+        dedup_window_seconds: float = 60.0,
+        max_alerts_per_minute: int = 30,
     ) -> None:
         self._queue: deque[AlertPayload] = deque(maxlen=max_in_memory)
         self.slack_webhook_url = slack_webhook_url or os.getenv("ARGVTIX_SLACK_WEBHOOK_URL")
@@ -79,15 +91,76 @@ class AlertDispatcher:
         self._http_post_fn = http_post_fn
         self._smtp_sender_fn = smtp_sender_fn
 
+        # Deduplication and Throttling
+        self.dedup_window_seconds = dedup_window_seconds
+        self.max_alerts_per_minute = max_alerts_per_minute
+        self._dedup_history: dict[str, float] = {}
+        self._dispatch_timestamps: deque[float] = deque()
+        self.total_dispatched = 0
+        self.total_suppressed = 0
+        self.total_throttled = 0
+
+    def is_duplicate(self, alert: AlertPayload, now: float | None = None) -> bool:
+        """Checks if an alert is duplicate within the deduplication window."""
+        import time
+
+        current_time = now if now is not None else time.time()
+        fp = alert.fingerprint()
+
+        last_seen = self._dedup_history.get(fp)
+        if last_seen is not None and (current_time - last_seen) < self.dedup_window_seconds:
+            return True
+
+        self._dedup_history[fp] = current_time
+        # Clean old keys (> 10x dedup window)
+        cutoff = current_time - (self.dedup_window_seconds * 2)
+        self._dedup_history = {k: v for k, v in self._dedup_history.items() if v >= cutoff}
+        return False
+
+    def is_throttled(self, now: float | None = None) -> bool:
+        """Checks if alert rate exceeds max_alerts_per_minute."""
+        import time
+
+        current_time = now if now is not None else time.time()
+        minute_ago = current_time - 60.0
+
+        # Purge timestamps older than 60 seconds
+        while self._dispatch_timestamps and self._dispatch_timestamps[0] < minute_ago:
+            self._dispatch_timestamps.popleft()
+
+        if len(self._dispatch_timestamps) >= self.max_alerts_per_minute:
+            return True
+
+        self._dispatch_timestamps.append(current_time)
+        return False
+
     def dispatch(
         self,
         alert: AlertPayload,
         channels: list[AlertChannel] | None = None,
+        bypass_dedup: bool = False,
+        bypass_throttle: bool = False,
     ) -> dict[str, bool]:
         """
-        Dispatches an alert to specified channels (or all available channels by default).
-        Returns mapping of channel name -> success status.
+        Dispatches an alert to specified channels with deduplication and throttling.
+        Returns mapping of channel name -> success status (or suppressed/throttled flags).
         """
+        if not bypass_dedup and self.is_duplicate(alert):
+            self.total_suppressed += 1
+            logger.info("[ALERT_DEDUP] Suppressed duplicate alert: %s", alert.fingerprint())
+            return {"suppressed": True, "in_memory": False, "slack": False, "email": False}
+
+        if not bypass_throttle and self.is_throttled():
+            self.total_throttled += 1
+            logger.warning(
+                "[ALERT_THROTTLED] Rate limit reached (%s/min); alert dropped: %s",
+                self.max_alerts_per_minute,
+                alert.title,
+            )
+            return {"throttled": True, "in_memory": False, "slack": False, "email": False}
+
+        self.total_dispatched += 1
+
         if channels is None:
             channels = [AlertChannel.IN_MEMORY, AlertChannel.SLACK, AlertChannel.EMAIL]
 
@@ -232,8 +305,13 @@ class AlertDispatcher:
         return items[:limit]
 
     def clear(self) -> None:
-        """Clears all buffered alerts."""
+        """Clears all buffered alerts and resets deduplication/throttling state."""
         self._queue.clear()
+        self._dedup_history.clear()
+        self._dispatch_timestamps.clear()
+        self.total_dispatched = 0
+        self.total_suppressed = 0
+        self.total_throttled = 0
 
 
 # Global singleton dispatcher instance
