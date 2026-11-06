@@ -86,28 +86,51 @@ class HTTPChatAdapter(BaseTargetAdapter):
             method="POST",
         )
 
-        try:
+        import concurrent.futures
+
+        from argvtix.scout.safety import KillSwitchActivatedError
+
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+
+        def _do_http_call() -> str:
             with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
                 status_code = resp.status if hasattr(resp, "status") else 200
                 self.safety.record_response(status_code)
-                resp_text = resp.read().decode("utf-8")
+                return resp.read().decode("utf-8")
+
+        future = executor.submit(_do_http_call)
+        try:
+            while True:
+                if self.safety.is_kill_switch_active():
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    raise KillSwitchActivatedError(
+                        f"[SCOUT_HALTED] In-flight request abandoned by kill switch: {self.safety.metrics.kill_reason or 'Emergency halt'}"
+                    )
                 try:
-                    resp_json = json.loads(resp_text)
-                    if isinstance(resp_json, dict):
-                        return str(
-                            resp_json.get("response")
-                            or resp_json.get("reply")
-                            or resp_json.get("content")
-                            or resp_json.get("message")
-                            or resp_text
-                        )
-                except Exception:
-                    pass
-                return resp_text
+                    resp_text = future.result(timeout=0.05)
+                    break
+                except concurrent.futures.TimeoutError:
+                    continue
+
+            try:
+                resp_json = json.loads(resp_text)
+                if isinstance(resp_json, dict):
+                    return str(
+                        resp_json.get("response")
+                        or resp_json.get("reply")
+                        or resp_json.get("content")
+                        or resp_json.get("message")
+                        or resp_text
+                    )
+            except Exception:
+                pass
+            return resp_text
         except urllib.error.HTTPError as err:
             self.safety.record_response(err.code)
             err_body = err.read().decode("utf-8") if hasattr(err, "read") else str(err)
             raise RuntimeError(f"HTTP {err.code}: {err_body}") from err
+        except KillSwitchActivatedError:
+            raise
         except Exception as exc:
             self.safety.record_response(500)
             raise RuntimeError(f"Network error communicating with target: {exc}") from exc

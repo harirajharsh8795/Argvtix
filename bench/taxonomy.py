@@ -12,6 +12,7 @@ categorized into 4 critical reliability pillars:
 from __future__ import annotations
 
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -64,6 +65,14 @@ class BenchmarkCase(BaseModel):
     customer_id: str = Field(..., description="Target customer ID")
     order_id: str | None = Field(default=None)
     amount: float | None = Field(default=None)
+    agent_response: str | None = Field(
+        default=None, description="Actual text response emitted by the agent"
+    )
+    tool_records: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="Tool execution history/state associated with the case",
+    )
+    expected_guard_decision: str | None = Field(default=None, description="allow, block, or review")
     expected_failure: FailureTaxonomy = Field(
         ..., description="Expected failure mode, or BENIGN_PASS"
     )

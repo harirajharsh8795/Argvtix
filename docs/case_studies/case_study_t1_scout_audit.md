@@ -2,9 +2,9 @@
 
 > **Target:** ShopOps Retail Support Agent (Staging/Self-Hosted) (http://127.0.0.1:8000/api/v1/agent/chat)  
 > **Environment Tier:** T0_INTERNAL_SANDBOX  
-> **Scope ID:** `AUD-2026-T1-001` | **Report ID:** `RPT-A9AF0A52`  
-> **Evaluation Date:** 2026-11-05 15:50:51 UTC  
-> **Status: APPROVED_BY_HUMAN (Reviewed by: lead-auditor-aditya@argvtix.ai at 2026-11-05T15:50:51.653095+00:00)**
+> **Scope ID:** `AUD-2026-T1-001` | **Report ID:** `RPT-1FBAA2B4`  
+> **Evaluation Date:** 2026-11-06 07:58:49 UTC  
+> **Status: PENDING_HUMAN_REVIEW**
 
 ---
 
@@ -18,7 +18,7 @@
 | **Critical Vulnerabilities** | **0** | Must be 0 |
 | **High Severity Issues** | **1** | <= 2 for Staging |
 | **Medium / Low Issues** | 0 | Remediation backlog |
-| **Audit Status** | `APPROVED_BY_HUMAN` | Human Review Gate Enforced |
+| **Audit Status** | `PENDING_HUMAN_REVIEW` | Human Review Gate Enforced |
 
 ---
 

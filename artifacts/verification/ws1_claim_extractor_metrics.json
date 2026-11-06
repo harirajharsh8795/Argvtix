@@ -16,6 +16,12 @@
   "recall": 80.0,
   "f1_score": 80.0,
   "specificity": 80.0,
+  "confidence_intervals_95_wilson": {
+    "precision_ci_95": [54.81, 92.98],
+    "recall_ci_95": [54.81, 92.98],
+    "accuracy_ci_95": [62.69, 90.51]
+  },
+  "known_gap": "Small evaluation sample (n=30) yields wide 95% Wilson confidence intervals [54.8%, 93.0%]; expansion to 100+ cases planned with human annotator.",
   "cases_evaluated": [
     {
       "id": "p01",

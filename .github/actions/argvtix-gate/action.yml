@@ -1,0 +1,37 @@
+name: "Argvtix Regression Gate"
+description: "Evaluates candidate benchmark and safety metrics against committed baseline to prevent regressions."
+author: "Argvtix Engineering"
+
+inputs:
+  baseline:
+    description: "Path to baseline metrics JSON file"
+    required: true
+  candidate:
+    description: "Path to candidate metrics JSON file"
+    required: true
+  output:
+    description: "Path to save regression gate output JSON"
+    required: false
+    default: "artifacts/verification/gate_result.json"
+  fail-on-review:
+    description: "Whether to fail on infrastructure REVIEW warnings (latency/cost)"
+    required: false
+    default: "false"
+
+outputs:
+  verdict:
+    description: "Gate verdict: PASS, FAIL, or REVIEW"
+    value: ${{ steps.eval-gate.outputs.verdict }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Regression Gate Comparator
+      id: eval-gate
+      shell: bash
+      run: |
+        python -m argvtix.regression.gate \
+          --baseline "${{ inputs.baseline }}" \
+          --candidate "${{ inputs.candidate }}" \
+          --output "${{ inputs.output }}" \
+          ${{ inputs.fail-on-review == 'true' && '--fail-on-review' || '' }}

@@ -2,8 +2,8 @@
   "workstream": "WS-2",
   "task": "Real Model Verification and Side-by-Side Comparison",
   "command": "python scripts/verify_ws2.py",
-  "git_sha": "0cd84cff4003f5e877c0a76422a01318f06971cc",
-  "date": "2026-11-05T14:41:00.139798+00:00",
+  "git_sha": "54f1c3dfae013691559283892db20414a8b94f4e",
+  "date": "2026-11-06T12:51:03.579810+00:00",
   "runtime": "Ollama local API (http://127.0.0.1:11434)",
   "real_model": "ollama/llama3.2:1b",
   "mock_model": "mock/judge-calibrated-v1",
@@ -33,8 +33,8 @@
         "pass_at_1": 50.0,
         "pass_pow_k": 40.0,
         "flake_rate": 20.0,
-        "latency_p50_ms": 552.82,
-        "latency_p95_ms": 1064.18,
+        "latency_p50_ms": 339.48,
+        "latency_p95_ms": 705.66,
         "cost_usd": 0.0
       },
       "mock_model": {

@@ -44,6 +44,7 @@ from argvtix.db.models import (
     WatchdogFindingRecord,
 )
 from argvtix.db.session import engine, get_db, init_db
+from argvtix.db.tenant import TenantScopedSession, get_tenant_db
 from argvtix.evals.benchmarks.adapters import MockAdapter
 from argvtix.evals.benchmarks.runner import BenchmarkRunner
 from argvtix.evals.claims import ClaimVerifier
@@ -472,7 +473,7 @@ class TraceIngestResponse(BaseModel):
 )
 def ingest_trace(
     trace: Trace,
-    db: Session = Depends(get_db),
+    db: TenantScopedSession = Depends(get_tenant_db),
     user: TokenPayload = Depends(get_current_user),
 ) -> TraceIngestResponse:
     """Ingest a complete AI execution trace with validation."""
@@ -566,7 +567,7 @@ def list_traces(
     trace_status: str | None = Query(None, alias="status"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db),
+    db: TenantScopedSession = Depends(get_tenant_db),
     user: TokenPayload = Depends(get_current_user),
 ) -> dict[str, Any]:
     """List ingested traces with optional filtering and pagination."""
@@ -610,7 +611,7 @@ def list_traces(
 
 @app.get("/api/v1/traces/stats", tags=["Traces"])
 def get_trace_stats(
-    db: Session = Depends(get_db),
+    db: TenantScopedSession = Depends(get_tenant_db),
     user: TokenPayload = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Return high-level summary metrics across recorded traces for project in a single query with TTL caching."""
@@ -673,7 +674,7 @@ def get_cache_metrics(
 @app.get("/api/v1/traces/{trace_id}", tags=["Traces"])
 def get_trace(
     trace_id: str,
-    db: Session = Depends(get_db),
+    db: TenantScopedSession = Depends(get_tenant_db),
     user: TokenPayload = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Retrieve full detail for a trace, including chronological execution steps."""
@@ -755,7 +756,7 @@ def check_action_guard(
 @limiter.limit("15/minute")
 def run_watchdog_scan(
     request: Request,
-    db: Session = Depends(get_db),
+    db: TenantScopedSession = Depends(get_tenant_db),
     user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Trigger an on-demand scan of all data integrity rules against business tables."""
@@ -767,7 +768,7 @@ def list_watchdog_findings(
     resolved: bool | None = None,
     severity: str | None = None,
     limit: int = 50,
-    db: Session = Depends(get_db),
+    db: TenantScopedSession = Depends(get_tenant_db),
     user: TokenPayload = Depends(get_current_user),
 ) -> dict[str, Any]:
     """List data anomalies flagged by Watchdog."""
@@ -807,7 +808,7 @@ def list_watchdog_findings(
 @app.patch("/api/v1/watchdog/findings/{finding_id}/resolve", tags=["Watchdog"])
 def resolve_finding(
     finding_id: str,
-    db: Session = Depends(get_db),
+    db: TenantScopedSession = Depends(get_tenant_db),
     user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Mark a watchdog finding as reviewed and resolved."""
@@ -1241,7 +1242,7 @@ def list_approvals_endpoint(
     status: str | None = None,
     limit: int = 50,
     offset: int = 0,
-    db: Session = Depends(get_db),
+    db: TenantScopedSession = Depends(get_tenant_db),
     user: TokenPayload = Depends(require_role(Role.VIEWER)),
 ) -> dict[str, Any]:
     """List pending or filtered human-in-the-loop approval requests."""
@@ -1277,7 +1278,7 @@ def list_approvals_endpoint(
 def approve_request_endpoint(
     approval_id: str,
     request: ApprovalDecisionRequest = ApprovalDecisionRequest(),
-    db: Session = Depends(get_db),
+    db: TenantScopedSession = Depends(get_tenant_db),
     user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Human reviewer approves an action proposal, triggering ToolGateway execution."""
@@ -1316,7 +1317,7 @@ def approve_request_endpoint(
 def reject_request_endpoint(
     approval_id: str,
     request: ApprovalDecisionRequest = ApprovalDecisionRequest(),
-    db: Session = Depends(get_db),
+    db: TenantScopedSession = Depends(get_tenant_db),
     user: TokenPayload = Depends(require_role(Role.OPERATOR)),
 ) -> dict[str, Any]:
     """Human reviewer rejects an action proposal."""

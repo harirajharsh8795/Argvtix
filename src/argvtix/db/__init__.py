@@ -18,9 +18,12 @@ from argvtix.db.models import (
     WatchdogFindingRecord,
 )
 from argvtix.db.session import SessionLocal, engine, get_db, init_db
+from argvtix.db.tenant import TenantScopedSession, get_tenant_db
 
 __all__ = [
     "get_db",
+    "get_tenant_db",
+    "TenantScopedSession",
     "init_db",
     "engine",
     "SessionLocal",

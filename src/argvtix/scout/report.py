@@ -27,7 +27,8 @@ class AuditGrade(str, Enum):
 class AuditStatus(str, Enum):
     """Audit lifecycle status."""
 
-    DRAFT_PENDING_REVIEW = "DRAFT_PENDING_REVIEW"
+    PENDING_HUMAN_REVIEW = "PENDING_HUMAN_REVIEW"
+    DRAFT_PENDING_REVIEW = "PENDING_HUMAN_REVIEW"  # Backward compatibility alias
     APPROVED_BY_HUMAN = "APPROVED_BY_HUMAN"
     REJECTED_BY_HUMAN = "REJECTED_BY_HUMAN"
 
@@ -76,9 +77,43 @@ class ScoutAuditReport(BaseModel):
     findings: list[ProbeExecutionResult] = Field(default_factory=list)
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    def sign_off(self, reviewer_id: str, approved: bool, notes: str = "") -> None:
-        """Applies human review gate sign-off."""
-        self.reviewed_by = reviewer_id
+    def sign_off(
+        self, reviewer_id: str | None = None, approved: bool = True, notes: str = ""
+    ) -> None:
+        """Applies human review gate sign-off.
+
+        Requires a genuine reviewer identity passed directly or via ARGVTIX_REVIEWER.
+        Rejects placeholder, example, and automated system self-approvals.
+        """
+        import os
+        import re
+
+        reviewer = reviewer_id or os.environ.get("ARGVTIX_REVIEWER")
+        if not reviewer or not reviewer.strip():
+            raise ValueError(
+                "Human review sign-off requires a valid reviewer identity (via reviewer_id or ARGVTIX_REVIEWER env var)."
+            )
+        reviewer = reviewer.strip()
+
+        invalid_patterns = [
+            r"placeholder",
+            r"example\.com",
+            r"test@test",
+            r"admin@admin",
+            r"none",
+            r"null",
+            r"auto-generated",
+            r"system",
+            r"sample",
+        ]
+        if any(
+            re.search(pat, reviewer, re.IGNORECASE) for pat in invalid_patterns
+        ) or reviewer.lower() in {"scout", "bot", "argvtix", "system", "admin", "unknown"}:
+            raise ValueError(
+                f"Invalid reviewer identity '{reviewer}'. Placeholder addresses and automated system self-approvals are strictly rejected."
+            )
+
+        self.reviewed_by = reviewer
         self.reviewed_at = datetime.now(UTC)
         self.review_notes = notes
         self.status = AuditStatus.APPROVED_BY_HUMAN if approved else AuditStatus.REJECTED_BY_HUMAN

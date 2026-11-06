@@ -73,12 +73,12 @@ class ProbeExecutionResult(BaseModel):
     )
     violation_details: str | None = None
     oracle_scores: dict[str, Any] = Field(default_factory=dict)
-    confidence: str = Field(
-        default="confirmed",
+    confidence: str | None = Field(
+        default=None,
         description="Confidence label: 'confirmed', 'likely', or 'needs-review'",
     )
-    reproducibility: str = Field(
-        default="3/3",
+    reproducibility: str | None = Field(
+        default=None,
         description="k/n trial reproducibility",
     )
     human_review_required: bool = Field(default=False)

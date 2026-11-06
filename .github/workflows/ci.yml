@@ -20,10 +20,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
@@ -38,7 +38,7 @@ jobs:
           ruff check .
           ruff format --check .
 
-      - name: Strict type check with mypy (no ignore flag)
+      - name: Strict type check with mypy
         run: |
           mypy src/argvtix --ignore-missing-imports
 
@@ -48,22 +48,69 @@ jobs:
 
       - name: Bench Gate (accuracy & taxonomy evaluation)
         run: |
-          python bench/runner.py --split both
+          python bench/runner.py --split dev
           python bench/runner.py --split sealed
 
       - name: Verify README test count badge
         run: |
           python scripts/check_readme_badge.py
 
+  postgres-rls-and-tenancy:
+    name: PostgreSQL 16 Real RLS & Isolation
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: argvtix_user
+          POSTGRES_PASSWORD: argvtix_test_password
+          POSTGRES_DB: argvtix_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" psycopg2-binary
+
+      - name: Run Alembic Migrations on Postgres
+        env:
+          ARGVTIX_DATABASE_URL: postgresql://argvtix_user:argvtix_test_password@localhost:5432/argvtix_test
+        run: |
+          alembic upgrade head
+          alembic downgrade -1
+          alembic upgrade head
+
+      - name: Run Postgres RLS and Tenancy Suite
+        env:
+          TEST_POSTGRES_URL: postgresql://argvtix_user:argvtix_test_password@localhost:5432/argvtix_test
+        run: |
+          pytest tests/test_postgres_rls.py tests/test_tenant_routing.py -v
+
   frontend-lint-and-build:
     name: Frontend Lint & Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20
           cache: "npm"
@@ -86,12 +133,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
       - name: Secret Scan (TruffleHog)
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@3.88.2
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
@@ -99,7 +146,7 @@ jobs:
           extra_args: --only-verified
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
         with:
           python-version: "3.12"
           cache: "pip"
@@ -116,10 +163,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Build Docker container image
         run: |

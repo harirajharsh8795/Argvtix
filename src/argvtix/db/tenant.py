@@ -12,8 +12,10 @@ Provides:
 from __future__ import annotations
 
 import logging
+from collections.abc import Generator
 from typing import Any, TypeVar
 
+from fastapi import Header, Request
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Query, Session
@@ -25,6 +27,7 @@ T = TypeVar("T")
 # Tables that must be protected by project_id tenant isolation
 TENANT_ISOLATED_TABLES = [
     "traces",
+    "trace_steps",
     "watchdog_findings",
     "approval_queue",
     "scout_reports",
@@ -124,6 +127,13 @@ class TenantScopedSession:
     def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
         return self.db.execute(statement, *args, **kwargs)
 
+    @property
+    def bind(self) -> Any:
+        return self.db.bind
+
+    def get_bind(self) -> Any:
+        return self.db.get_bind()
+
     def close(self) -> None:
         self.db.close()
 
@@ -178,3 +188,34 @@ def apply_rls_policies(target_engine: Engine) -> bool:
         conn.commit()
     logger.info("Successfully applied PostgreSQL Row-Level Security policies.")
     return True
+
+
+def get_tenant_db(
+    request: Request,
+    x_project_id: str | None = Header(default=None, alias="X-Project-ID"),
+) -> Generator[TenantScopedSession, None, None]:
+    """FastAPI dependency yielding a TenantScopedSession partitioned by project_id.
+
+    Extracts project_id from X-Project-ID header or request state or defaults to 'default'.
+    On PostgreSQL dialect, sets session-level app.current_project_id for Row-Level Security.
+    """
+    from argvtix.db.session import SessionLocal
+
+    project_id = x_project_id
+    if not project_id and request is not None and hasattr(request, "state"):
+        project_id = getattr(request.state, "project_id", None)
+    if not project_id:
+        project_id = "default"
+
+    db = SessionLocal()
+    try:
+        bind = db.get_bind()
+        if bind is not None and bind.dialect.name.lower() == "postgresql":
+            db.execute(
+                text("SELECT set_config('app.current_project_id', :pid, false)"),
+                {"pid": project_id},
+            )
+        tenant_session = TenantScopedSession(db=db, project_id=project_id)
+        yield tenant_session
+    finally:
+        db.close()
