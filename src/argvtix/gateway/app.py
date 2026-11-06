@@ -634,6 +634,17 @@ def get_trace_stats(
         .first()
     )
 
+    if row is None:
+        res = {
+            "total_traces": 0,
+            "success_rate": 0.0,
+            "avg_latency_ms": 0.0,
+            "total_cost_usd": 0.0,
+            "total_tokens": 0,
+        }
+        cache_manager.set(cache_key, res, ttl_seconds=5)
+        return res
+
     total_traces = int(row.total_traces or 0)
     if total_traces == 0:
         res = {

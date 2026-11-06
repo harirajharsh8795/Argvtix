@@ -50,14 +50,12 @@ class TenantScopedQuery(Query[T]):
     def _apply_tenant_filter(self) -> None:
         """Inspect entities and automatically add project_id filtering if entity supports it."""
         for desc in self.column_descriptions:
-            entity = desc.get("entity")
+            entity: Any = desc.get("entity")
             if entity is not None and hasattr(entity, "project_id"):
                 # Apply filter only once
-                self._criterion = (
-                    (self._criterion & (entity.project_id == self._project_id))
-                    if self._criterion is not None
-                    else (entity.project_id == self._project_id)
-                )
+                crit = getattr(self, "_criterion", None)
+                pid_cond = entity.project_id == self._project_id
+                self._criterion = (crit & pid_cond) if crit is not None else pid_cond  # type: ignore[attr-defined, has-type]
 
 
 class TenantScopedSession:
